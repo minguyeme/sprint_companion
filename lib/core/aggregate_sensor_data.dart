@@ -3,8 +3,9 @@ typedef GpsData = ({
   double longitude,
   double latitude,
   double altitude,
-  double accuracy,
+  double gpsAccuracy,
   double speed,
+  double speedAccuracy,
   double heading,
 });
 

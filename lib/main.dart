@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sprint_companion/view/data_collector_view.dart';
+import 'package:sprint_companion/features/data_collector/data_collector_view.dart';
 
 void main() {
   runApp(const MyApp());

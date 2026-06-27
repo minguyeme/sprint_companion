@@ -2,10 +2,10 @@ typedef Vector3D = ({double x, double y, double z});
 typedef GpsSpeed = ({double speed, double speedAccuracy});
 
 /// Data model containing a snapshot of GPS, accelerometer and gyroscope sensor data.
+/// Timestamped in milliseconds since unix epoch.
 class AggregateSensorData {
-  final int masterTimestamp;
-
-  final GpsSpeed speed;
+  final int gpsTimestamp;
+  final GpsSpeed gps;
 
   final int rawAccelTimestamp;
   final Vector3D rawAccel;
@@ -17,8 +17,8 @@ class AggregateSensorData {
   final Vector3D gyro;
 
   AggregateSensorData({
-    required this.masterTimestamp,
-    required this.speed,
+    required this.gpsTimestamp,
+    required this.gps,
     required this.rawAccelTimestamp,
     required this.rawAccel,
     required this.cleanAccelTimestamp,

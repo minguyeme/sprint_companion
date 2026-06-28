@@ -10,11 +10,9 @@ class SensorService {
   static final SensorService _instance = SensorService._internal();
 
   final _sensorOutputController = BehaviorSubject<AggregateSensorData>();
-
   StreamSubscription<AggregateSensorData>? _sensorSubscription;
 
   factory SensorService() => _instance;
-
   SensorService._internal();
 
   Stream<AggregateSensorData> get sensorStream =>
@@ -25,12 +23,9 @@ class SensorService {
 
     final Stream<AccelerometerEvent> rawAccelChannel =
         accelerometerEventStream();
-
     final Stream<UserAccelerometerEvent> cleanAccelChannel =
         userAccelerometerEventStream();
-
     final Stream<GyroscopeEvent> gyroChannel = gyroscopeEventStream();
-
     final Stream<Position> gpsChannel = Geolocator.getPositionStream(
       locationSettings: AndroidSettings(
         accuracy: LocationAccuracy.best,
@@ -46,7 +41,6 @@ class SensorService {
             data: (x: event.x, y: event.y, z: event.z),
           ),
         );
-
     final Stream<Timestamped<Vector3D>> timestampedCleanAccel =
         cleanAccelChannel.map(
           (event) => (
@@ -54,14 +48,12 @@ class SensorService {
             data: (x: event.x, y: event.y, z: event.z),
           ),
         );
-
     final Stream<Timestamped<Vector3D>> timestampedGyro = gyroChannel.map(
       (event) => (
         timestamp: event.timestamp.millisecondsSinceEpoch,
         data: (x: event.x, y: event.y, z: event.z),
       ),
     );
-
     final Stream<Timestamped<GpsSpeed>> timestampedSpeed = gpsChannel.map(
       (position) => (
         timestamp: position.timestamp.millisecondsSinceEpoch,

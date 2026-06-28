@@ -4,8 +4,6 @@ import 'package:sensors_plus/sensors_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sprint_companion/core/aggregate_sensor_data.dart';
 
-typedef Timestamped<T> = ({int timestamp, T data});
-
 class SensorService {
   static final SensorService _instance = SensorService._internal();
 
@@ -34,30 +32,36 @@ class SensorService {
       ),
     );
 
-    final Stream<Timestamped<Vector3D>> timestampedRawAccel = rawAccelChannel
+    final Stream<TimestampedVector3D> timestampedRawAccel = rawAccelChannel.map(
+      (event) => (
+        timestamp: event.timestamp.millisecondsSinceEpoch,
+        x: event.x,
+        y: event.y,
+        z: event.z,
+      ),
+    );
+    final Stream<TimestampedVector3D> timestampedCleanAccel = cleanAccelChannel
         .map(
           (event) => (
             timestamp: event.timestamp.millisecondsSinceEpoch,
-            data: (x: event.x, y: event.y, z: event.z),
+            x: event.x,
+            y: event.y,
+            z: event.z,
           ),
         );
-    final Stream<Timestamped<Vector3D>> timestampedCleanAccel =
-        cleanAccelChannel.map(
-          (event) => (
-            timestamp: event.timestamp.millisecondsSinceEpoch,
-            data: (x: event.x, y: event.y, z: event.z),
-          ),
-        );
-    final Stream<Timestamped<Vector3D>> timestampedGyro = gyroChannel.map(
+    final Stream<TimestampedVector3D> timestampedGyro = gyroChannel.map(
       (event) => (
         timestamp: event.timestamp.millisecondsSinceEpoch,
-        data: (x: event.x, y: event.y, z: event.z),
+        x: event.x,
+        y: event.y,
+        z: event.z,
       ),
     );
-    final Stream<Timestamped<GpsSpeed>> timestampedSpeed = gpsChannel.map(
+    final Stream<TimestampedGpsSpeed> timestampedSpeed = gpsChannel.map(
       (position) => (
         timestamp: position.timestamp.millisecondsSinceEpoch,
-        data: (speed: position.speed, speedAccuracy: position.speedAccuracy),
+        speed: position.speed,
+        accuracy: position.speedAccuracy,
       ),
     );
 
@@ -68,14 +72,10 @@ class SensorService {
           timestampedGyro,
           timestampedSpeed,
           (raw, clean, gyro, gps) => AggregateSensorData(
-            gpsTimestamp: gps.timestamp,
-            gps: gps.data,
-            rawAccelTimestamp: raw.timestamp,
-            rawAccel: raw.data,
-            cleanAccelTimestamp: clean.timestamp,
-            cleanAccel: clean.data,
-            gyroTimestamp: gyro.timestamp,
-            gyro: gyro.data,
+            rawAccel: raw,
+            cleanAccel: clean,
+            gyro: gyro,
+            gps: gps,
           ),
         ).listen(
           (aggregateData) {

@@ -85,9 +85,14 @@ class SensorService {
             gyroTimestamp: gyro.timestamp,
             gyro: gyro.data,
           ),
-        ).listen((aggregateData) {
-          _sensorOutputController.add(aggregateData);
-        });
+        ).listen(
+          (aggregateData) {
+            _sensorOutputController.add(aggregateData);
+          },
+          onError: (error, stackTrace) {
+            _sensorOutputController.addError(error, stackTrace);
+          },
+        );
   }
 
   void dispose() {

@@ -16,8 +16,14 @@ class SensorService {
   Stream<AggregateSensorData> get sensorStream =>
       _sensorOutputController.stream;
 
-  void initialiseSensor() {
+  void initialiseSensor() async {
     if (_sensorSubscription != null) return;
+
+    if (!(await Geolocator.isLocationServiceEnabled())) return;
+
+    if (await Geolocator.checkPermission() == LocationPermission.denied) {
+      if (await Geolocator.requestPermission() != LocationPermission.whileInUse) return;
+    }
 
     final Stream<AccelerometerEvent> rawAccelChannel =
         accelerometerEventStream();

@@ -12,9 +12,13 @@ sealed class SensorException implements Exception {
   String toString() => message;
 }
 
+class ServiceInactiveException extends SensorException {
+  const ServiceInactiveException() : super('Sensor tracking is uninitialised.');
+}
+
 class ServiceAlreadyActiveException extends SensorException {
   const ServiceAlreadyActiveException()
-    : super('Sensors tracking are already active.');
+    : super('Sensor tracking is already active.');
 }
 
 class GpsDisabledException extends SensorException {
@@ -37,26 +41,28 @@ class SensorService {
   factory SensorService() => _instance;
   SensorService._internal();
 
-  Stream<AggregateSensorData> get sensorStream =>
-      _sensorOutputController.stream;
+  Stream<AggregateSensorData> get sensorStream {
+    if (_sensorSubscription == null) throw ServiceInactiveException();
+    return _sensorOutputController.stream;
+  }
 
   Future<void> initialiseSensor() async {
     try {
       if (_sensorSubscription != null || _isInitialising == true) {
         throw ServiceAlreadyActiveException();
       }
-      _isInitialising = true;
 
+      _isInitialising = true;
       if (!(await Geolocator.isLocationServiceEnabled())) {
         throw GpsDisabledException();
       }
-
       if (await Geolocator.checkPermission() == LocationPermission.denied) {
         if (await Geolocator.requestPermission() !=
             LocationPermission.whileInUse) {
           throw GpsDeniedException();
         }
       }
+      _isInitialising = false;
 
       final Stream<AccelerometerEvent> rawAccelChannel =
           accelerometerEventStream(
@@ -133,6 +139,8 @@ class SensorService {
           );
     } catch (exception) {
       _isInitialising = false;
+      _sensorSubscription?.cancel();
+      _sensorSubscription = null;
       rethrow;
     }
   }
@@ -140,6 +148,5 @@ class SensorService {
   void dispose() {
     _sensorSubscription?.cancel();
     _sensorSubscription = null;
-    _sensorOutputController.close();
   }
 }

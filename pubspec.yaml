@@ -37,6 +37,8 @@ dependencies:
   sensors_plus: ^7.0.0
   geolocator: ^14.0.3
   rxdart: ^0.28.0
+  path_provider: ^2.1.6
+  csv: ^8.0.0
 
 dev_dependencies:
   flutter_test:

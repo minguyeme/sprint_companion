@@ -59,10 +59,16 @@ class SensorService {
       }
 
       final Stream<AccelerometerEvent> rawAccelChannel =
-          accelerometerEventStream();
+          accelerometerEventStream(
+            samplingPeriod: const Duration(milliseconds: 10),
+          );
       final Stream<UserAccelerometerEvent> cleanAccelChannel =
-          userAccelerometerEventStream();
-      final Stream<GyroscopeEvent> gyroChannel = gyroscopeEventStream();
+          userAccelerometerEventStream(
+            samplingPeriod: const Duration(milliseconds: 10),
+          );
+      final Stream<GyroscopeEvent> gyroChannel = gyroscopeEventStream(
+        samplingPeriod: const Duration(milliseconds: 10),
+      );
       final Stream<Position> gpsChannel = Geolocator.getPositionStream(
         locationSettings: AndroidSettings(
           accuracy: LocationAccuracy.best,

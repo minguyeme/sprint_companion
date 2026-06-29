@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:rxdart/rxdart.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:sprint_companion/core/sensor_exception.dart';
-import 'package:sprint_companion/core/aggregate_sensor_data.dart';
+import 'sensor_exception.dart';
+import 'aggregate_sensor_data.dart';
 
 class SensorService {
   static final SensorService _instance = SensorService._internal();

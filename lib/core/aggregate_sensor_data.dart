@@ -1,9 +1,5 @@
 typedef TimestampedVector3D = ({double x, double y, double z, int timestamp});
-typedef TimestampedGpsSpeed = ({
-  double speed,
-  double accuracy,
-  int timestamp,
-});
+typedef TimestampedGpsSpeed = ({double speed, double accuracy, int timestamp});
 
 /// Data model containing a snapshot of GPS, accelerometer and gyroscope sensor data.
 /// Timestamped in milliseconds since unix epoch.

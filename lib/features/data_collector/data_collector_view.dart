@@ -10,7 +10,7 @@ class DataCollectorView extends StatelessWidget {
         title: const Text('Data Collector'),
         centerTitle: false,
         scrolledUnderElevation: 0,
-        backgroundColor: Theme.of(context).colorScheme.surface, 
+        backgroundColor: Theme.of(context).colorScheme.surface,
       ),
       body: Center(
         child: Padding(

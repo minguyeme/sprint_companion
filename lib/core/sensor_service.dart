@@ -2,8 +2,28 @@ import 'dart:async';
 import 'package:rxdart/rxdart.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:geolocator/geolocator.dart';
-import 'sensor_exception.dart';
 import 'aggregate_sensor_data.dart';
+
+sealed class SensorException implements Exception {
+  final String message;
+  const SensorException(this.message);
+
+  @override
+  String toString() => message;
+}
+
+class ServiceAlreadyActiveException extends SensorException {
+  const ServiceAlreadyActiveException() : super('Sensors tracking are already active.');
+}
+
+class GpsDisabledException extends SensorException {
+  const GpsDisabledException() : super('Gps is disabled. The app needs gps to work.');
+}
+
+class GpsDeniedException extends SensorException {
+  const GpsDeniedException() : super('Gps access is denied. The app needs gps to work.');
+}
+
 
 class SensorService {
   static final SensorService _instance = SensorService._internal();
@@ -103,9 +123,9 @@ class SensorService {
               _sensorOutputController.addError(error, stackTrace);
             },
           );
-    } catch (exception, stackTrace) {
+    } catch (exception) {
       _isInitialising = false;
-      _sensorOutputController.addError(exception, stackTrace);
+      rethrow;
     }
   }
 

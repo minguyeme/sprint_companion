@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'package:rxdart/rxdart.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:geolocator/geolocator.dart';
@@ -9,6 +10,8 @@ class ServiceInactiveException extends SensorException {}
 class ServiceAlreadyActiveException extends SensorException {}
 class GpsDisabledException extends SensorException {}
 class GpsDeniedException extends SensorException {}
+class GpsPermaDeniedException extends SensorException {}
+class UnknownException extends SensorException {}
 
 class SensorService {
   static final SensorService _instance = SensorService._internal();
@@ -36,9 +39,14 @@ class SensorService {
         throw GpsDisabledException();
       }
       if (await Geolocator.checkPermission() == LocationPermission.denied) {
-        if (await Geolocator.requestPermission() !=
-            LocationPermission.whileInUse) {
-          throw GpsDeniedException();
+        switch (await Geolocator.requestPermission()) {
+          case LocationPermission.denied:
+            throw GpsDeniedException();
+          case LocationPermission.deniedForever:
+            throw GpsPermaDeniedException();
+          case LocationPermission.unableToDetermine:
+            throw UnknownException();
+          default:
         }
       }
       _isInitialising = false;
@@ -113,7 +121,19 @@ class SensorService {
               _sensorOutputController.add(aggregateData);
             },
             onError: (error, stackTrace) {
-              _sensorOutputController.addError(error, stackTrace);
+              developer.log(
+                'Sensor stream failure.',
+                name: 'SensorService',
+                error: error,
+                stackTrace: stackTrace,
+              );
+              _sensorOutputController.addError(switch (error) {
+                PermissionDeniedException() => GpsDeniedException(),
+                LocationServiceDisabledException() => GpsDisabledException(),
+                _ => UnknownException(),
+              });
+              _sensorSubscription?.cancel();
+              _sensorSubscription = null;
             },
           );
     } catch (exception) {

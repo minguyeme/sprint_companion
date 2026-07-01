@@ -6,12 +6,18 @@ import 'package:geolocator/geolocator.dart';
 import 'aggregate_sensor_data.dart';
 
 sealed class SensorException implements Exception {}
+
 class ServiceInactiveException extends SensorException {}
+
 class ServiceAlreadyActiveException extends SensorException {}
+
 class GpsDisabledException extends SensorException {}
+
 class GpsDeniedException extends SensorException {}
+
 class GpsPermaDeniedException extends SensorException {}
-class UnknownException extends SensorException {}
+
+class UnknownSensorException extends SensorException {}
 
 class SensorService {
   static final SensorService _instance = SensorService._internal();
@@ -45,7 +51,7 @@ class SensorService {
           case LocationPermission.deniedForever:
             throw GpsPermaDeniedException();
           case LocationPermission.unableToDetermine:
-            throw UnknownException();
+            throw UnknownSensorException();
           default:
         }
       }
@@ -130,7 +136,7 @@ class SensorService {
               _sensorOutputController.addError(switch (error) {
                 PermissionDeniedException() => GpsDeniedException(),
                 LocationServiceDisabledException() => GpsDisabledException(),
-                _ => UnknownException(),
+                _ => UnknownSensorException(),
               });
               _sensorSubscription?.cancel();
               _sensorSubscription = null;

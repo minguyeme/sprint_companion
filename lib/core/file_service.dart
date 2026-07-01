@@ -1,5 +1,12 @@
 import 'dart:io';
+import 'dart:developer' as developer;
 import 'package:path_provider/path_provider.dart';
+
+sealed class FileException implements Exception {}
+
+class OutOfStorageException extends FileException {}
+
+class UnknownStorageException extends FileException {}
 
 enum FileType {
   dataset('datasets', 'csv'),
@@ -26,7 +33,8 @@ class FileService {
     required FileType type,
   }) async {
     _documentsPath ??= (await getApplicationDocumentsDirectory()).path;
-    final targetPath = '$_documentsPath/${type.parentPath}/$fileName.${type.suffix}';
+    final targetPath =
+        '$_documentsPath/${type.parentPath}/$fileName.${type.suffix}';
 
     await _writeStringWorker(targetPath, str);
   }
@@ -37,14 +45,41 @@ class FileService {
     required FileType type,
   }) async {
     _supportPath ??= (await getApplicationSupportDirectory()).path;
-    final targetPath = '$_supportPath/${type.parentPath}/$fileName.${type.suffix}';
+    final targetPath =
+        '$_supportPath/${type.parentPath}/$fileName.${type.suffix}';
 
     await _writeStringWorker(targetPath, str);
   }
 
   Future<void> _writeStringWorker(String path, String content) async {
-    final targetFile = File(path);
-    await targetFile.create(recursive: true);
-    await targetFile.writeAsString(content);
+    try {
+      final targetFile = File(path);
+      await targetFile.create(recursive: true);
+      await targetFile.writeAsString(content);
+    } on FileSystemException catch (fileSystemException, stackTrace) {
+      developer.log(
+        'File system failure.',
+        name: 'FileService',
+        error: fileSystemException,
+        stackTrace: stackTrace,
+      );
+      switch (fileSystemException.osError?.errorCode) {
+        case 28:
+          throw OutOfStorageException();
+        default:
+          throw UnknownStorageException();
+      }
+    } catch (exception, stackTrace) {
+      developer.log(
+        'Other storage failure.',
+        name: 'FileService',
+        error: exception,
+        stackTrace: stackTrace,
+      );
+      switch (exception) {
+        default:
+          throw UnknownStorageException();
+      }
+    }
   }
 }

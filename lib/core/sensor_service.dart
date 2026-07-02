@@ -144,14 +144,14 @@ class SensorService {
           );
     } catch (exception) {
       _isInitialising = false;
-      _sensorSubscription?.cancel();
+      await _sensorSubscription?.cancel();
       _sensorSubscription = null;
       rethrow;
     }
   }
 
-  void dispose() {
-    _sensorSubscription?.cancel();
+  void dispose() async {
+    await _sensorSubscription?.cancel();
     _sensorSubscription = null;
   }
 }

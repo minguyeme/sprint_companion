@@ -8,7 +8,7 @@ import '../../core/file_service.dart';
 enum CollectorError {
   activeService,
   activeRecording,
-  notRecording,
+  noRecording,
   gpsDisabled,
   gpsDenied,
   outOfStorage,
@@ -16,9 +16,12 @@ enum CollectorError {
   fileUnknown,
 }
 
+enum CollectorState { uninitialised, idle, recording, cached, processing }
+
 class DataCollectorRepository {
   final _sensorService = SensorService();
   final _fileService = FileService();
+  CollectorState _collectorState = CollectorState.uninitialised;
   final List<List<num>> _sensorCache = [];
   StreamSubscription<AggregateSensorData>? _sensorStream;
 
@@ -26,6 +29,7 @@ class DataCollectorRepository {
   initialiseSession() async {
     try {
       await _sensorService.initialiseSensor();
+      _collectorState = CollectorState.idle;
     } catch (exception) {
       return (
         isSucessful: false,
@@ -41,7 +45,64 @@ class DataCollectorRepository {
     return (isSucessful: true, error: null);
   }
 
-  void cacheData(AggregateSensorData data) {
+  void startRecording({required void Function(CollectorError) onError}) {
+    if (_collectorState != CollectorState.idle) {
+      onError(CollectorError.activeRecording);
+    }
+    _sensorStream = _sensorService.sensorStream.listen(
+      _cacheData,
+      onError: (error) => switch (error) {
+        GpsDeniedException() => onError(CollectorError.gpsDenied),
+        GpsDisabledException() => onError(CollectorError.gpsDisabled),
+        _ => onError(CollectorError.sensorUnknown),
+      },
+    );
+    _collectorState = CollectorState.recording;
+  }
+
+  Future<void> stopRecording({
+    required void Function(CollectorError) onError,
+  }) async {
+    if (_collectorState != CollectorState.recording || _sensorCache.isEmpty) {
+      onError(CollectorError.noRecording);
+      return;
+    }
+    _collectorState = CollectorState.cached;
+    await _sensorStream?.cancel();
+    _sensorStream = null;
+  }
+
+  Future<void> saveCache({
+    required void Function(CollectorError) onError,
+    required void Function() onCompletion,
+  }) async {
+    try {
+      if (_collectorState != CollectorState.cached) {
+        onError(CollectorError.noRecording);
+        return;
+      }
+      String csvString = await compute(_toCsvWorker, _sensorCache);
+      await _fileService.saveUserData(
+        csvString,
+        fileName: '',
+        type: FileType.dataset,
+      );
+      onCompletion();
+      _sensorCache.clear();
+      _collectorState = CollectorState.idle;
+    } catch (exception) {
+      switch (exception) {
+        case OutOfStorageException():
+          onError(CollectorError.outOfStorage);
+        case UnknownStorageException():
+          onError(CollectorError.fileUnknown);
+      }
+    }
+  }
+
+  void _cacheData(AggregateSensorData data) {
+    if (_collectorState != CollectorState.recording) return;
+
     final AggregateSensorData(:rawAccel, :cleanAccel, :gyro, :gps) = data;
 
     _sensorCache.add([
@@ -61,53 +122,6 @@ class DataCollectorRepository {
       gps.speed,
       gps.accuracy,
     ]);
-  }
-
-  void startRecording({required void Function(CollectorError) onError}) {
-    if (_sensorStream != null) onError(CollectorError.activeRecording);
-    _sensorStream = _sensorService.sensorStream.listen(
-      cacheData,
-      onError: (error) => switch (error) {
-        GpsDeniedException() => onError(CollectorError.gpsDenied),
-        GpsDisabledException() => onError(CollectorError.gpsDisabled),
-        _ => onError(CollectorError.sensorUnknown),
-      },
-    );
-  }
-
-  Future<void> stopRecording({
-    required void Function(CollectorError) onError,
-  }) async {
-    if (_sensorStream == null || _sensorCache.isEmpty) {
-      onError(CollectorError.notRecording);
-      return;
-    }
-    await _sensorStream?.cancel();
-    _sensorStream = null;
-  }
-
-  Future<void> saveCache({
-    required void Function(CollectorError) onError,
-    required void Function() onCompletion,
-  }) async {
-    try {
-      if (_sensorStream != null) onError(CollectorError.activeRecording);
-      String csvString = await compute(_toCsvWorker, _sensorCache);
-      await _fileService.saveUserData(
-        csvString,
-        fileName: '',
-        type: FileType.dataset,
-      );
-      onCompletion();
-      _sensorCache.clear();
-    } catch (exception) {
-      switch (exception) {
-        case OutOfStorageException():
-          onError(CollectorError.outOfStorage);
-        case UnknownStorageException():
-          onError(CollectorError.fileUnknown);
-      }
-    }
   }
 }
 

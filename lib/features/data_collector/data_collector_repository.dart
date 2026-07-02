@@ -18,6 +18,8 @@ enum CollectorError {
 
 enum CollectorState { uninitialised, idle, recording, cached, processing }
 
+enum SessionFlag {stationary, walk, jog, sprint}
+
 class DataCollectorRepository {
   final _sensorService = SensorService();
   final _fileService = FileService();
@@ -73,6 +75,8 @@ class DataCollectorRepository {
   }
 
   Future<void> saveCache({
+    String? name,
+    required SessionFlag flag,
     required void Function(CollectorError) onError,
     required void Function() onCompletion,
   }) async {
@@ -81,10 +85,12 @@ class DataCollectorRepository {
         onError(CollectorError.noRecording);
         return;
       }
+      final String resolvedName = _resolveName(name, flag);
+
       String csvString = await compute(_toCsvWorker, _sensorCache);
       await _fileService.saveUserData(
         csvString,
-        fileName: '',
+        fileName: resolvedName,
         type: FileType.dataset,
       );
       onCompletion();
@@ -98,6 +104,11 @@ class DataCollectorRepository {
           onError(CollectorError.fileUnknown);
       }
     }
+  }
+
+  String _resolveName(String? name, SessionFlag flag) {
+    //TODO
+    throw UnimplementedError();
   }
 
   void _cacheData(AggregateSensorData data) {

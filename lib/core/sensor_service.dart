@@ -17,34 +17,42 @@ class GpsDeniedException extends SensorException {}
 
 class GpsPermaDeniedException extends SensorException {}
 
+class PreciseGpsDeniedException extends SensorException {}
+
 class UnknownSensorException extends SensorException {}
+
+enum SensorStatus { inactive, initialising, active }
 
 class SensorService {
   static final SensorService _instance = SensorService._internal();
 
-  bool _isInitialising = false;
-  final _sensorOutputController = BehaviorSubject<AggregateSensorData>();
+  final _statusController = BehaviorSubject<SensorStatus>.seeded(
+    SensorStatus.inactive,
+  );
+  final _sensorController = PublishSubject<AggregateSensorData>();
   StreamSubscription<AggregateSensorData>? _sensorSubscription;
 
   factory SensorService() => _instance;
   SensorService._internal();
 
+  Stream<SensorStatus> get statusStream => _statusController.stream;
+
   Stream<AggregateSensorData> get sensorStream {
     if (_sensorSubscription == null) throw ServiceInactiveException();
-    return _sensorOutputController.stream;
+    return _sensorController.stream;
   }
 
   Future<void> initialiseSensor() async {
     try {
-      if (_sensorSubscription != null || _isInitialising == true) {
+      if (_statusController.value != SensorStatus.inactive) {
         throw ServiceAlreadyActiveException();
       }
 
-      _isInitialising = true;
+      _statusController.add(SensorStatus.initialising);
       if (!(await Geolocator.isLocationServiceEnabled())) {
         throw GpsDisabledException();
       }
-      if (await Geolocator.checkPermission() == LocationPermission.denied) {
+      if (await Geolocator.checkPermission() != LocationPermission.whileInUse) {
         switch (await Geolocator.requestPermission()) {
           case LocationPermission.denied:
             throw GpsDeniedException();
@@ -55,7 +63,10 @@ class SensorService {
           default:
         }
       }
-      _isInitialising = false;
+      if (await Geolocator.getLocationAccuracy() !=
+          LocationAccuracyStatus.precise) {
+        throw PreciseGpsDeniedException();
+      }
 
       final Stream<AccelerometerEvent> rawAccelChannel =
           accelerometerEventStream(
@@ -73,6 +84,7 @@ class SensorService {
           accuracy: LocationAccuracy.best,
           distanceFilter: 0,
           intervalDuration: const Duration(seconds: 1),
+          forceLocationManager: true,
         ),
       );
 
@@ -116,15 +128,20 @@ class SensorService {
             timestampedCleanAccel,
             timestampedGyro,
             timestampedSpeed,
-            (raw, clean, gyro, gps) => AggregateSensorData(
-              rawAccel: raw,
-              cleanAccel: clean,
-              gyro: gyro,
-              gps: gps,
-            ),
+            (raw, clean, gyro, gps) {
+              if (_statusController.value == SensorStatus.initialising) {
+                _statusController.add(SensorStatus.active);
+              }
+              return AggregateSensorData(
+                rawAccel: raw,
+                cleanAccel: clean,
+                gyro: gyro,
+                gps: gps,
+              );
+            },
           ).listen(
             (aggregateData) {
-              _sensorOutputController.add(aggregateData);
+              _sensorController.add(aggregateData);
             },
             onError: (error, stackTrace) {
               developer.log(
@@ -133,25 +150,23 @@ class SensorService {
                 error: error,
                 stackTrace: stackTrace,
               );
-              _sensorOutputController.addError(switch (error) {
+              _sensorController.addError(switch (error) {
                 PermissionDeniedException() => GpsDeniedException(),
                 LocationServiceDisabledException() => GpsDisabledException(),
                 _ => UnknownSensorException(),
               });
-              _sensorSubscription?.cancel();
-              _sensorSubscription = null;
+              dispose();
             },
           );
     } catch (exception) {
-      _isInitialising = false;
-      await _sensorSubscription?.cancel();
-      _sensorSubscription = null;
+      await dispose();
       rethrow;
     }
   }
 
-  void dispose() async {
+  Future<void> dispose() async {
     await _sensorSubscription?.cancel();
     _sensorSubscription = null;
+    _statusController.add(SensorStatus.inactive);
   }
 }

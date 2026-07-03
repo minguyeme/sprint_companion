@@ -11,7 +11,6 @@ enum CollectorError {
   activeService,
   activeRecording,
   noRecording,
-  noCache,
   gpsDisabled,
   gpsDenied,
   gpsPermaDenied,
@@ -52,6 +51,7 @@ class DataCollectorRepository {
         onError(CollectorError.activeService);
         return;
       }
+
       _statusSubscription = _sensorService.statusStream.listen((sensorStatus) {
         _statusController.add(switch (sensorStatus) {
           SensorStatus.inactive => CollectorStatus.inactive,
@@ -90,6 +90,7 @@ class DataCollectorRepository {
       }
       return;
     }
+
     _sensorSubscription = _sensorService.sensorStream
         .where((_) => _statusController.value == CollectorStatus.recording)
         .listen(
@@ -110,7 +111,8 @@ class DataCollectorRepository {
   Future<void> stopRecording({
     required void Function(CollectorError) onError,
   }) async {
-    if (_statusController.value != CollectorStatus.recording) {
+    if (_statusController.value != CollectorStatus.recording ||
+        _sensorCache.isEmpty) {
       switch (_statusController.value) {
         case CollectorStatus.inactive:
           onError(CollectorError.inactiveService);
@@ -119,9 +121,40 @@ class DataCollectorRepository {
       }
       return;
     }
+
     _statusController.add(CollectorStatus.cached);
     await _sensorSubscription?.cancel();
     _sensorSubscription = null;
+  }
+
+  ({int rows, double maxSpeed, double maxSpeedAccuracy})? cacheInfo({
+    required void Function(CollectorError) onError,
+  }) {
+    if (_statusController.value != CollectorStatus.cached) {
+      switch (_statusController.value) {
+        case CollectorStatus.inactive:
+          onError(CollectorError.inactiveService);
+        default:
+          onError(CollectorError.noRecording);
+      }
+      return null;
+    }
+
+    final int rows = _sensorCache.length;
+    double maxSpeed = _sensorCache[0][13] as double;
+    double maxSpeedAccuracy = _sensorCache[0][14] as double;
+    for (final row in _sensorCache) {
+      final double currentSpeed = row[13] as double;
+      final double currentAccuracy = row[14] as double;
+
+      if (currentSpeed > maxSpeed) {
+        maxSpeed = currentSpeed;
+      }
+      if (currentAccuracy > maxSpeedAccuracy) {
+        maxSpeedAccuracy = currentAccuracy;
+      }
+    }
+    return (rows: rows, maxSpeed: maxSpeed, maxSpeedAccuracy: maxSpeedAccuracy);
   }
 
   Future<void> saveCache({
@@ -131,14 +164,15 @@ class DataCollectorRepository {
   }) async {
     try {
       if (_statusController.value != CollectorStatus.cached) {
-      switch (_statusController.value) {
-        case CollectorStatus.inactive:
-          onError(CollectorError.inactiveService);
-        default:
-          onError(CollectorError.noCache);
+        switch (_statusController.value) {
+          case CollectorStatus.inactive:
+            onError(CollectorError.inactiveService);
+          default:
+            onError(CollectorError.noRecording);
+        }
+        return;
       }
-      return;
-    }
+
       _statusController.add(CollectorStatus.processing);
       final String resolvedName = _resolveName(name, flag);
       String csvString = await compute(_toCsvWorker, _sensorCache);
@@ -169,8 +203,13 @@ class DataCollectorRepository {
   }
 
   String _resolveName(String? name, SessionFlag flag) {
-    //TODO
-    throw UnimplementedError();
+    final prefix = switch (flag) {
+      SessionFlag.stationary => 'stationary',
+      SessionFlag.walk => 'walk',
+      SessionFlag.jog => 'jog',
+      SessionFlag.sprint => 'sprint',
+    };
+    return '${prefix}_${name ?? 'session_num'}_${_sensorCache[0][0].toString()}';
   }
 
   void _cacheData(AggregateSensorData data) {

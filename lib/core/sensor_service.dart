@@ -38,7 +38,7 @@ class SensorService {
   Stream<SensorStatus> get statusStream => _statusController.stream;
 
   Stream<AggregateSensorData> get sensorStream {
-    if (_sensorSubscription == null) throw ServiceInactiveException();
+    if (_statusController.value != SensorStatus.active) throw ServiceInactiveException();
     return _sensorController.stream;
   }
 

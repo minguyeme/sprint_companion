@@ -1,102 +1,155 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:csv/csv.dart';
 import '../../core/aggregate_sensor_data.dart';
 import '../../core/sensor_service.dart';
 import '../../core/file_service.dart';
 
 enum CollectorError {
+  inactiveService,
   activeService,
   activeRecording,
   noRecording,
+  noCache,
   gpsDisabled,
   gpsDenied,
+  gpsPermaDenied,
+  preciseGpsDenied,
   outOfStorage,
   sensorUnknown,
   fileUnknown,
 }
 
-enum CollectorState { uninitialised, idle, recording, cached, processing }
+enum CollectorStatus {
+  inactive,
+  initialising,
+  idle,
+  recording,
+  cached,
+  processing,
+}
 
-enum SessionFlag {stationary, walk, jog, sprint}
+enum SessionFlag { stationary, walk, jog, sprint }
 
 class DataCollectorRepository {
   final _sensorService = SensorService();
   final _fileService = FileService();
-  CollectorState _collectorState = CollectorState.uninitialised;
+  final _statusController = BehaviorSubject<CollectorStatus>.seeded(
+    CollectorStatus.inactive,
+  );
   final List<List<num>> _sensorCache = [];
-  StreamSubscription<AggregateSensorData>? _sensorStream;
+  StreamSubscription<AggregateSensorData>? _sensorSubscription;
+  StreamSubscription<SensorStatus>? _statusSubscription;
 
-  Future<({bool isSucessful, CollectorError? error})>
-  initialiseSession() async {
+  Stream<CollectorStatus> get statusStream => _statusController.stream;
+
+  Future<void> initialiseSession({
+    required void Function(CollectorError) onError,
+  }) async {
     try {
+      if (_statusController.value != CollectorStatus.inactive) {
+        onError(CollectorError.activeService);
+        return;
+      }
+      _statusSubscription = _sensorService.statusStream.listen((sensorStatus) {
+        _statusController.add(switch (sensorStatus) {
+          SensorStatus.inactive => CollectorStatus.inactive,
+          SensorStatus.initialising => CollectorStatus.initialising,
+          SensorStatus.active => CollectorStatus.idle,
+        });
+      });
       await _sensorService.initialiseSensor();
-      _collectorState = CollectorState.idle;
-    } catch (exception) {
-      return (
-        isSucessful: false,
-        error: switch (exception) {
-          ServiceAlreadyActiveException() => CollectorError.activeService,
-          GpsDisabledException() => CollectorError.gpsDisabled,
-          GpsDeniedException() => CollectorError.gpsDenied,
-          _ => CollectorError.sensorUnknown,
-        },
-      );
+    } on SensorException catch (exception) {
+      switch (exception) {
+        case ServiceInactiveException():
+          onError(CollectorError.inactiveService);
+        case ServiceAlreadyActiveException():
+          onError(CollectorError.activeService);
+        case GpsDisabledException():
+          onError(CollectorError.gpsDisabled);
+        case GpsDeniedException():
+          onError(CollectorError.gpsDenied);
+        case GpsPermaDeniedException():
+          onError(CollectorError.gpsPermaDenied);
+        case PreciseGpsDeniedException():
+          onError(CollectorError.preciseGpsDenied);
+        case UnknownSensorException():
+          onError(CollectorError.sensorUnknown);
+      }
     }
-
-    return (isSucessful: true, error: null);
   }
 
   void startRecording({required void Function(CollectorError) onError}) {
-    if (_collectorState != CollectorState.idle) {
-      onError(CollectorError.activeRecording);
+    if (_statusController.value != CollectorStatus.idle) {
+      switch (_statusController.value) {
+        case CollectorStatus.inactive:
+          onError(CollectorError.inactiveService);
+        default:
+          onError(CollectorError.activeRecording);
+      }
+      return;
     }
-    _sensorStream = _sensorService.sensorStream.listen(
-      _cacheData,
-      onError: (error) => switch (error) {
-        GpsDeniedException() => onError(CollectorError.gpsDenied),
-        GpsDisabledException() => onError(CollectorError.gpsDisabled),
-        _ => onError(CollectorError.sensorUnknown),
-      },
-    );
-    _collectorState = CollectorState.recording;
+    _sensorSubscription = _sensorService.sensorStream
+        .where((_) => _statusController.value == CollectorStatus.recording)
+        .listen(
+          _cacheData,
+          onError: (error) => switch (error) {
+            GpsDeniedException() => onError(CollectorError.gpsDenied),
+            GpsDisabledException() => onError(CollectorError.gpsDisabled),
+            GpsPermaDeniedException() => onError(CollectorError.gpsPermaDenied),
+            PreciseGpsDeniedException() => onError(
+              CollectorError.preciseGpsDenied,
+            ),
+            _ => onError(CollectorError.sensorUnknown),
+          },
+        );
+    _statusController.add(CollectorStatus.recording);
   }
 
   Future<void> stopRecording({
     required void Function(CollectorError) onError,
   }) async {
-    if (_collectorState != CollectorState.recording || _sensorCache.isEmpty) {
-      onError(CollectorError.noRecording);
+    if (_statusController.value != CollectorStatus.recording) {
+      switch (_statusController.value) {
+        case CollectorStatus.inactive:
+          onError(CollectorError.inactiveService);
+        default:
+          onError(CollectorError.noRecording);
+      }
       return;
     }
-    _collectorState = CollectorState.cached;
-    await _sensorStream?.cancel();
-    _sensorStream = null;
+    _statusController.add(CollectorStatus.cached);
+    await _sensorSubscription?.cancel();
+    _sensorSubscription = null;
   }
 
   Future<void> saveCache({
     String? name,
     required SessionFlag flag,
     required void Function(CollectorError) onError,
-    required void Function() onCompletion,
   }) async {
     try {
-      if (_collectorState != CollectorState.cached) {
-        onError(CollectorError.noRecording);
-        return;
+      if (_statusController.value != CollectorStatus.cached) {
+      switch (_statusController.value) {
+        case CollectorStatus.inactive:
+          onError(CollectorError.inactiveService);
+        default:
+          onError(CollectorError.noCache);
       }
+      return;
+    }
+      _statusController.add(CollectorStatus.processing);
       final String resolvedName = _resolveName(name, flag);
-
       String csvString = await compute(_toCsvWorker, _sensorCache);
       await _fileService.saveUserData(
         csvString,
         fileName: resolvedName,
         type: FileType.dataset,
       );
-      onCompletion();
       _sensorCache.clear();
-      _collectorState = CollectorState.idle;
-    } catch (exception) {
+      _statusController.add(CollectorStatus.idle);
+    } on FileException catch (exception) {
       switch (exception) {
         case OutOfStorageException():
           onError(CollectorError.outOfStorage);
@@ -106,14 +159,21 @@ class DataCollectorRepository {
     }
   }
 
+  Future<void> dispose() async {
+    _sensorService.dispose();
+    await _statusSubscription?.cancel();
+    _statusSubscription = null;
+    await _sensorSubscription?.cancel();
+    _sensorSubscription = null;
+    _sensorCache.clear();
+  }
+
   String _resolveName(String? name, SessionFlag flag) {
     //TODO
     throw UnimplementedError();
   }
 
   void _cacheData(AggregateSensorData data) {
-    if (_collectorState != CollectorState.recording) return;
-
     final AggregateSensorData(:rawAccel, :cleanAccel, :gyro, :gps) = data;
 
     _sensorCache.add([

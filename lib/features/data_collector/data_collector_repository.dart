@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:csv/csv.dart';
-import '../../core/aggregate_sensor_data.dart';
-import '../../core/sensor_service.dart';
-import '../../core/file_service.dart';
+import '../../core/sensor_capture/aggregate_sensor_data.dart';
+import '../../core/sensor_capture/sensor_service.dart';
+import '../../core/file_storage/file_service.dart';
 
 enum CollectorError {
   inactiveService,

@@ -199,6 +199,7 @@ class DataCollectorRepository {
     _statusSubscription = null;
     await _sensorSubscription?.cancel();
     _sensorSubscription = null;
+    await _statusController.close();
     _sensorCache.clear();
   }
 

@@ -91,6 +91,7 @@ class DataCollectorRepository {
       return;
     }
 
+    _statusController.add(CollectorStatus.recording);
     _sensorSubscription = _sensorService.sensorStream
         .where((_) => _statusController.value == CollectorStatus.recording)
         .listen(
@@ -105,7 +106,6 @@ class DataCollectorRepository {
             _ => onError(CollectorError.sensorUnknown),
           },
         );
-    _statusController.add(CollectorStatus.recording);
   }
 
   Future<void> stopRecording({

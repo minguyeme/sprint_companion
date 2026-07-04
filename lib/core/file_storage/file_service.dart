@@ -12,13 +12,14 @@ class OutOfStorageException extends FileException {}
 class UnknownStorageException extends FileException {}
 
 enum FileType {
-  dataset('datasets', 'csv'),
-  metric('metrics', 'csv');
+  dataset('datasets', 'csv', false),
+  metric('metrics', 'csv', true);
 
   final String parentPath;
   final String suffix;
+  final bool isSupportDir;
 
-  const FileType(this.parentPath, this.suffix);
+  const FileType(this.parentPath, this.suffix, this.isSupportDir);
 
   static FileType fromString(String str) =>
       values.firstWhere((type) => type.parentPath == str);
@@ -67,6 +68,15 @@ class FileService {
   }) async {
     _documentsPath ??= (await getApplicationDocumentsDirectory()).path;
     final targetPath = '$_documentsPath/${type.parentPath}';
+
+    return await _getFilesWorker(targetPath);
+  }
+
+  Future<List<ManagedFileData>> getAppDataFiles({
+    required FileType type,
+  }) async {
+    _supportPath ??= (await getApplicationSupportDirectory()).path;
+    final targetPath = '$_supportPath/${type.parentPath}';
 
     return await _getFilesWorker(targetPath);
   }

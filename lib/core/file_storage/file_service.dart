@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:developer' as developer;
 import 'package:rxdart/rxdart.dart';
@@ -18,6 +19,9 @@ enum FileType {
   final String suffix;
 
   const FileType(this.parentPath, this.suffix);
+
+  static FileType fromString(String str) =>
+      values.firstWhere((type) => type.parentPath == str);
 }
 
 class FileService {
@@ -25,9 +29,12 @@ class FileService {
 
   String? _documentsPath;
   String? _supportPath;
+  final _fileChangedController = PublishSubject<FileType>();
 
   factory FileService() => _instance;
   FileService._internal();
+
+  Stream<FileType> get fileChangedStream => _fileChangedController.stream;
 
   Future<void> saveUserData(
     String str, {
@@ -39,6 +46,7 @@ class FileService {
         '$_documentsPath/${type.parentPath}/$fileName.${type.suffix}';
 
     await _writeStringWorker(targetPath, str);
+    _fileChangedController.add(type);
   }
 
   Future<void> logAppData(
@@ -51,6 +59,7 @@ class FileService {
         '$_supportPath/${type.parentPath}/$fileName.${type.suffix}';
 
     await _writeStringWorker(targetPath, str);
+    _fileChangedController.add(type);
   }
 
   Future<List<ManagedFileData>> getUserDataFiles({
@@ -65,6 +74,10 @@ class FileService {
   Future<void> deleteFile(ManagedFileData file) async {
     try {
       await File(file.path).delete();
+      final segments = file.path.split('/');
+      _fileChangedController.add(
+        FileType.fromString(segments[segments.length - 2]),
+      );
     } on FileSystemException catch (exception, stackTrace) {
       if (exception.osError?.errorCode == 2) return;
       developer.log(
@@ -101,7 +114,6 @@ class FileService {
           ),
         ),
       );
-      
     } catch (exception, stackTrace) {
       developer.log(
         'Failure to get files.',

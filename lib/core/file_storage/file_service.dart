@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:developer' as developer;
+import 'package:rxdart/rxdart.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sprint_companion/core/file_storage/managed_file_data.dart';
 
@@ -61,6 +62,31 @@ class FileService {
     return await _getFilesWorker(targetPath);
   }
 
+  Future<void> deleteFile(ManagedFileData file) async {
+    try {
+      await File(file.path).delete();
+    } on FileSystemException catch (exception, stackTrace) {
+      if (exception.osError?.errorCode == 2) return;
+      developer.log(
+        'File deletion failure.',
+        name: 'FileService',
+        error: exception,
+        stackTrace: stackTrace,
+      );
+    } catch (exception, stackTrace) {
+      developer.log(
+        'Other file deletion failure.',
+        name: 'FileService',
+        error: exception,
+        stackTrace: stackTrace,
+      );
+      switch (exception) {
+        default:
+          throw UnknownStorageException();
+      }
+    }
+  }
+
   Future<List<ManagedFileData>> _getFilesWorker(String path) async {
     try {
       final targetDir = Directory(path);
@@ -95,7 +121,6 @@ class FileService {
       final targetFile = File(path);
       await targetFile.create(recursive: true);
       await targetFile.writeAsString(content);
-
     } on FileSystemException catch (fileSystemException, stackTrace) {
       developer.log(
         'File system failure.',

@@ -4,9 +4,9 @@ import 'package:share_plus/share_plus.dart';
 import 'file_service.dart';
 import 'managed_file_data.dart';
 
-enum FileManagementError { unknownFile }
+enum FileManagementError { alreadyActive, unknownFile }
 
-enum FileManagementStatus { inactive, active }
+enum FileManagementStatus { inactive, initialising, active }
 
 class FileManagementRepository {
   final _fileService = FileService();
@@ -18,14 +18,18 @@ class FileManagementRepository {
 
   Stream<List<ManagedFileData>> get managedFilesStream =>
       _managedFilesController.stream;
-  Stream<FileManagementStatus> get statusStream =>
-      _statusController.stream;
+  Stream<FileManagementStatus> get statusStream => _statusController.stream;
 
   Future<void> initialiseFor(
     FileType type, {
     required void Function(FileManagementError) onError,
   }) async {
     try {
+      if (_statusController.value != FileManagementStatus.inactive) {
+        onError(FileManagementError.alreadyActive);
+        return;
+      }
+      _statusController.add(FileManagementStatus.initialising);
       Future<List<ManagedFileData>> fetchList() async => type.isSupportDir
           ? _fileService.getAppDataFiles(type: type)
           : _fileService.getUserDataFiles(type: type);

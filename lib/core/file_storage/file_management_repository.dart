@@ -6,19 +6,19 @@ import 'managed_file_data.dart';
 
 enum FileManagementError { unknownFile }
 
-enum FileManagementState { inactive, active }
+enum FileManagementStatus { inactive, active }
 
 class FileManagementRepository {
   final _fileService = FileService();
   final _managedFilesController = BehaviorSubject<List<ManagedFileData>>();
-  final _statusController = BehaviorSubject<FileManagementState>.seeded(
-    FileManagementState.inactive,
+  final _statusController = BehaviorSubject<FileManagementStatus>.seeded(
+    FileManagementStatus.inactive,
   );
   StreamSubscription<FileType>? _fileChangedSubscription;
 
   Stream<List<ManagedFileData>> get managedFilesStream =>
       _managedFilesController.stream;
-  Stream<FileManagementState> get fileMangementState =>
+  Stream<FileManagementStatus> get statusStream =>
       _statusController.stream;
 
   Future<void> initialiseFor(
@@ -33,7 +33,7 @@ class FileManagementRepository {
       _fileChangedSubscription = _fileService.fileChangedStream
           .where((typeChanged) => typeChanged == type)
           .listen((_) async => _managedFilesController.add(await fetchList()));
-      _statusController.add(FileManagementState.active);
+      _statusController.add(FileManagementStatus.active);
     } on FileException catch (exception) {
       switch (exception) {
         case OutOfStorageException():

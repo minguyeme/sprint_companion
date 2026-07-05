@@ -26,10 +26,13 @@ class FileManagementRepository {
     required void Function(FileManagementError) onError,
   }) async {
     try {
-      Future<List<ManagedFileData>> fetch() async => type.isSupportDir
+      Future<List<ManagedFileData>> fetchList() async => type.isSupportDir
           ? _fileService.getAppDataFiles(type: type)
           : _fileService.getUserDataFiles(type: type);
-      _managedFilesController.add(await fetch());
+      _managedFilesController.add(await fetchList());
+      _fileChangedSubscription = _fileService.fileChangedStream
+          .where((typeChanged) => typeChanged == type)
+          .listen((_) async => _managedFilesController.add(await fetchList()));
       _statusController.add(FileManagementState.active);
     } on FileException catch (exception) {
       switch (exception) {

@@ -38,8 +38,10 @@ class DataCollectorRepository {
     CollectorStatus.inactive,
   );
   final List<List<num>> _sensorCache = [];
+
   StreamSubscription<AggregateSensorData>? _sensorSubscription;
   StreamSubscription<SensorStatus>? _statusSubscription;
+  bool _buttonFlag = false; 
 
   Stream<CollectorStatus> get statusStream => _statusController.stream;
 
@@ -108,6 +110,11 @@ class DataCollectorRepository {
         );
   }
 
+  void toggleFlag() {
+    if (_statusController.value != CollectorStatus.recording) return;
+    _buttonFlag = !_buttonFlag;
+  }
+
   Future<void> stopRecording({
     required void Function(CollectorError) onError,
   }) async {
@@ -123,6 +130,7 @@ class DataCollectorRepository {
     }
 
     _statusController.add(CollectorStatus.cached);
+    _buttonFlag = false;
     await _sensorSubscription?.cancel();
     _sensorSubscription = null;
   }
@@ -224,6 +232,7 @@ class DataCollectorRepository {
       gps.timestamp,
       gps.speed,
       gps.accuracy,
+      _buttonFlag ? 1 : 0,
     ]);
   }
 }
@@ -246,6 +255,7 @@ Future<String> _toCsvWorker(List<List<num>> matrix) async {
       'gps_timestamp',
       'speed',
       'speed_accuracy',
+      'flagged'
     ],
     ...matrix,
   ];

@@ -17,7 +17,6 @@ class DataCollectorViewModel extends ChangeNotifier {
   FileManagementStatus _fileStatus = FileManagementStatus.inactive;
   CollectorStatus _collectorStatus = CollectorStatus.inactive;
   var _cachedInfo = (rows: 0, maxSpeed: 0.0, maxSpeedAccuracy: 0.0);
-  bool _isFlagIndicatorActive = false;
   List<ManagedFileData> _savedDatasets = [];
   SessionFlag _selectedFlag = SessionFlag.sprint;
 
@@ -46,7 +45,6 @@ class DataCollectorViewModel extends ChangeNotifier {
           nameController.clear();
           _cachedInfo = (rows: 0, maxSpeed: 0.0, maxSpeedAccuracy: 0.0);
         case CollectorStatus.cached:
-          _isFlagIndicatorActive = false;
           _cachedInfo = _collectorRepository.cacheInfo();
         default:
       }
@@ -56,7 +54,6 @@ class DataCollectorViewModel extends ChangeNotifier {
 
   FileManagementStatus get fileStatus => _fileStatus;
   CollectorStatus get collectorStatus => _collectorStatus;
-  bool get isFlagIndicatorActive => _isFlagIndicatorActive;
   List<ManagedFileData> get savedDatasets => _savedDatasets;
 
   SessionFlag get selectedFlag => _selectedFlag;
@@ -93,19 +90,14 @@ class DataCollectorViewModel extends ChangeNotifier {
       case CollectorStatus.recording:
         _collectorRepository.stopRecording(onError: uiOnError);
       case CollectorStatus.cached:
+        final name = nameController.text.trim();
         _collectorRepository.saveCache(
-          name: nameController.text.trim().isEmpty ? null : nameController.text,
+          name: name.isEmpty ? null : name,
           flag: _selectedFlag,
           onError: uiOnError,
         );
       default:
     }
-  }
-
-  void handleFlagToggle() {
-    _collectorRepository.toggleFlag();
-    _isFlagIndicatorActive = !_isFlagIndicatorActive;
-    notifyListeners();
   }
 
   void handleDelete(

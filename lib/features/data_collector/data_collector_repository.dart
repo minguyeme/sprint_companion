@@ -127,17 +127,9 @@ class DataCollectorRepository {
     _sensorSubscription = null;
   }
 
-  ({int rows, double maxSpeed, double maxSpeedAccuracy})? cacheInfo({
-    required void Function(CollectorError) onError,
-  }) {
+  ({int rows, double maxSpeed, double maxSpeedAccuracy}) cacheInfo() {
     if (_statusController.value != CollectorStatus.cached) {
-      switch (_statusController.value) {
-        case CollectorStatus.inactive:
-          onError(CollectorError.inactiveService);
-        default:
-          onError(CollectorError.noRecording);
-      }
-      return null;
+      return (rows: 0, maxSpeed: 0, maxSpeedAccuracy: 0);
     }
 
     final int rows = _sensorCache.length;

@@ -32,7 +32,7 @@ enum CollectorStatus {
 enum SessionFlag { stationary, walk, jog, sprint }
 
 class DataCollectorRepository {
-  final _sensorService = SensorService();
+  final SensorService _sensorService;
   final _fileService = FileService();
   final _statusController = BehaviorSubject<CollectorStatus>.seeded(
     CollectorStatus.inactive,
@@ -42,6 +42,7 @@ class DataCollectorRepository {
   StreamSubscription<AggregateSensorData>? _sensorSubscription;
   StreamSubscription<SensorStatus>? _statusSubscription;
 
+  DataCollectorRepository({required this._sensorService});
 
   Stream<CollectorStatus> get statusStream => _statusController.stream;
 

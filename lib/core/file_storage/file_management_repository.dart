@@ -9,12 +9,14 @@ enum FileManagementError { alreadyActive, unknownFile }
 enum FileManagementStatus { inactive, initialising, active }
 
 class FileManagementRepository {
-  final _fileService = FileService();
+  final FileService _fileService;
   final _managedFilesController = BehaviorSubject<List<ManagedFileData>>();
   final _statusController = BehaviorSubject<FileManagementStatus>.seeded(
     FileManagementStatus.inactive,
   );
   StreamSubscription<FileType>? _fileChangedSubscription;
+
+  FileManagementRepository({required this._fileService});
 
   Stream<List<ManagedFileData>> get managedFilesStream =>
       _managedFilesController.stream;

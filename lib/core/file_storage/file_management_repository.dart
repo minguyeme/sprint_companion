@@ -42,6 +42,7 @@ class FileManagementRepository {
       switch (exception) {
         case OutOfStorageException():
           onError(FileManagementError.unknownFile);
+        case FileNotFoundException():
         case UnknownStorageException():
           onError(FileManagementError.unknownFile);
       }
@@ -58,6 +59,7 @@ class FileManagementRepository {
       switch (exception) {
         case OutOfStorageException():
           onError(FileManagementError.unknownFile);
+        case FileNotFoundException():
         case UnknownStorageException():
           onError(FileManagementError.unknownFile);
       }

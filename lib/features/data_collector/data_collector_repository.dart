@@ -181,6 +181,7 @@ class DataCollectorRepository {
       switch (exception) {
         case OutOfStorageException():
           onError(CollectorError.outOfStorage);
+        case FileNotFoundException():
         case UnknownStorageException():
           onError(CollectorError.fileUnknown);
       }

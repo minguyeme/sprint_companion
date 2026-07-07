@@ -7,6 +7,8 @@ import 'package:sprint_companion/core/file_storage/managed_file_data.dart';
 
 sealed class FileException implements Exception {}
 
+class FileNotFoundException extends FileException {}
+
 class OutOfStorageException extends FileException {}
 
 class UnknownStorageException extends FileException {}
@@ -84,18 +86,19 @@ class FileService {
   Future<void> deleteFile(ManagedFileData file) async {
     try {
       await File(file.path).delete();
-      final segments = file.path.split('/');
-      _fileChangedController.add(
-        FileType.fromString(segments[segments.length - 2]),
-      );
+      _notifyStreamFromPath(file.path);
     } on FileSystemException catch (exception, stackTrace) {
-      if (exception.osError?.errorCode == 2) return;
+      if (exception.osError?.errorCode == 2) {
+        _notifyStreamFromPath(file.path);
+        return;
+      }
       developer.log(
         'File deletion failure.',
         name: 'FileService',
         error: exception,
         stackTrace: stackTrace,
       );
+      throw UnknownStorageException();
     } catch (exception, stackTrace) {
       developer.log(
         'Other file deletion failure.',
@@ -103,11 +106,49 @@ class FileService {
         error: exception,
         stackTrace: stackTrace,
       );
-      switch (exception) {
+      throw UnknownStorageException();
+    }
+  }
+
+  Future<void> renameFile(ManagedFileData file, {required String name}) async {
+    try {
+      final path = file.path;
+      final parentDir = path.substring(0, path.lastIndexOf('/'));
+      await File(
+        path,
+      ).rename('$parentDir/$name${path.substring(path.lastIndexOf('.'))}');
+      _notifyStreamFromPath(path);
+    } on FileSystemException catch (exception, stackTrace) {
+      developer.log(
+        'File naming failure.',
+        name: 'FileService',
+        error: exception,
+        stackTrace: stackTrace,
+      );
+      switch (exception.osError?.errorCode) {
+        case 2:
+          throw FileNotFoundException();
+        case 28:
+          throw OutOfStorageException();
         default:
           throw UnknownStorageException();
       }
+    } catch (exception, stackTrace) {
+      developer.log(
+        'Other file naming failure.',
+        name: 'FileService',
+        error: exception,
+        stackTrace: stackTrace,
+      );
+      throw UnknownStorageException();
     }
+  }
+
+  void _notifyStreamFromPath(String path) {
+    final segments = path.split('/');
+    _fileChangedController.add(
+      FileType.fromString(segments[segments.length - 2]),
+    );
   }
 
   Future<List<ManagedFileData>> _getFilesWorker(String path) async {

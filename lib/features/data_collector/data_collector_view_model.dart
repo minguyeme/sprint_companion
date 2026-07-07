@@ -107,6 +107,14 @@ class DataCollectorViewModel extends ChangeNotifier {
     _fileRepository.delete(file, onError: uiOnError);
   }
 
+  void handleRename(
+    ManagedFileData file, {
+    required String name,
+    required void Function(FileManagementError) uiOnError,
+  }) {
+    _fileRepository.rename(file, newName: name, onError: uiOnError);
+  }
+
   void handleShare(
     ManagedFileData file, {
     required void Function(bool) uiOnResult,

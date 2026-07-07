@@ -66,6 +66,24 @@ class FileManagementRepository {
     }
   }
 
+  Future<void> rename(
+    ManagedFileData file, {
+    required String newName,
+    required void Function(FileManagementError) onError,
+  }) async {
+    try {
+      await _fileService.renameFile(file, name: newName);
+    } on FileException catch (exception) {
+      switch (exception) {
+        case OutOfStorageException():
+          onError(FileManagementError.unknownFile);
+        case FileNotFoundException():
+        case UnknownStorageException():
+          onError(FileManagementError.unknownFile);
+      }
+    }
+  }
+
   Future<void> share(
     ManagedFileData file, {
     required void Function(bool) onResult,

@@ -1,51 +1,78 @@
 import 'package:flutter/material.dart';
+import 'data_collector_view_model.dart';
+import 'data_collector_repository.dart';
+import '../../core/file_storage/file_management_repository.dart';
 
-class DataCollectorView extends StatelessWidget {
-  const DataCollectorView({super.key});
+class DataCollectorView extends StatefulWidget {
+  final FileManagementRepository fileRepository;
+  final DataCollectorRepository collectorRepository;
+
+  const DataCollectorView({
+    super.key,
+    required this.fileRepository,
+    required this.collectorRepository,
+  });
+
+  @override
+  State<DataCollectorView> createState() => _DataCollectorViewState();
+}
+
+class _DataCollectorViewState extends State<DataCollectorView> {
+  late final DataCollectorViewModel _viewModel = DataCollectorViewModel(
+    fileRepository: widget.fileRepository,
+    collectorRepository: widget.collectorRepository,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _viewModel.initialiseScreen(
+        uiOnCollectorError: _handleCollectorError,
+        uiOnFileError: _handleFileError,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _viewModel.dispose();
+    super.dispose();
+  }
+
+  void _handleFileError(FileManagementError error) {
+    //TODO: implement file error handling
+  }
+
+  void _handleCollectorError(CollectorError error) {
+    //TODO: implement collector error handling
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mediaQuery = MediaQuery.of(context);
+
+    final double universalHorizontalPadding = mediaQuery.size.width * 0.04;
+    final double universalVerticalPadding = mediaQuery.size.height * 0.02;
+
     return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
         title: const Text('Data Collector'),
-        centerTitle: false,
-        scrolledUnderElevation: 0,
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        backgroundColor: theme.colorScheme.primaryContainer,
+        foregroundColor: theme.colorScheme.onPrimaryContainer,
       ),
-      body: Center(
+      body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+          padding: EdgeInsets.symmetric(
+            vertical: universalVerticalPadding,
+            horizontal: universalHorizontalPadding,
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                'Collection Phase',
-                style: Theme.of(context).textTheme.headlineLarge,
-              ),
-              Spacer(),
-              Container(
-                height: 320,
-                width: 270,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outline,
-                    width: 1,
-                  ),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: ListView(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    children: [
-                      for (int i = 0; i < 40; i++)
-                        const Text('Relatively long text stream'),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [const Text('Placeholder')],
           ),
         ),
       ),

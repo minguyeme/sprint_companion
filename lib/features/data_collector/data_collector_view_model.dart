@@ -18,7 +18,6 @@ class DataCollectorViewModel extends ChangeNotifier {
   CollectorStatus _collectorStatus = CollectorStatus.inactive;
   var _cachedInfo = (rows: 0, maxSpeed: 0.0, maxSpeedAccuracy: 0.0);
   List<ManagedFileData> _savedDatasets = [];
-  SessionFlag _selectedFlag = SessionFlag.sprint;
 
   DataCollectorViewModel({
     required this._fileRepository,
@@ -56,12 +55,6 @@ class DataCollectorViewModel extends ChangeNotifier {
   CollectorStatus get collectorStatus => _collectorStatus;
   List<ManagedFileData> get savedDatasets => _savedDatasets;
 
-  SessionFlag get selectedFlag => _selectedFlag;
-  set selectedFlag(SessionFlag flag) {
-    _selectedFlag = flag;
-    notifyListeners();
-  }
-
   ({String rows, String maxSpeed, String maxSpeedAccuracy}) get cacheInfo => (
     rows: '${_cachedInfo.rows} rows',
     maxSpeed: '${_cachedInfo.maxSpeed.toStringAsFixed(2)} m/s',
@@ -93,7 +86,6 @@ class DataCollectorViewModel extends ChangeNotifier {
         final name = nameController.text.trim();
         _collectorRepository.saveCache(
           name: name.isEmpty ? null : name,
-          flag: _selectedFlag,
           onError: uiOnError,
         );
       default:

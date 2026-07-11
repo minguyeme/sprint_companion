@@ -29,11 +29,9 @@ enum CollectorStatus {
   processing,
 }
 
-enum SessionFlag { stationary, walk, jog, sprint }
-
 class DataCollectorRepository {
   final SensorService _sensorService;
-  final  FileService _fileService;
+  final FileService _fileService;
   final _statusController = BehaviorSubject<CollectorStatus>.seeded(
     CollectorStatus.inactive,
   );
@@ -42,7 +40,10 @@ class DataCollectorRepository {
   StreamSubscription<AggregateSensorData>? _sensorSubscription;
   StreamSubscription<SensorStatus>? _statusSubscription;
 
-  DataCollectorRepository({required this._sensorService, required this._fileService});
+  DataCollectorRepository({
+    required this._sensorService,
+    required this._fileService,
+  });
 
   Stream<CollectorStatus> get statusStream => _statusController.stream;
 
@@ -154,7 +155,6 @@ class DataCollectorRepository {
 
   Future<void> saveCache({
     String? name,
-    required SessionFlag flag,
     required void Function(CollectorError) onError,
   }) async {
     try {
@@ -169,7 +169,8 @@ class DataCollectorRepository {
       }
 
       _statusController.add(CollectorStatus.processing);
-      final String resolvedName = _resolveName(name, flag);
+      final resolvedName =
+          '${name ?? 'session_num'}_${_sensorCache[0][0].toString()}';
       String csvString = await compute(_toCsvWorker, _sensorCache);
       await _fileService.saveUserData(
         csvString,
@@ -197,16 +198,6 @@ class DataCollectorRepository {
     _sensorSubscription = null;
     await _statusController.close();
     _sensorCache.clear();
-  }
-
-  String _resolveName(String? name, SessionFlag flag) {
-    final prefix = switch (flag) {
-      SessionFlag.stationary => 'stationary',
-      SessionFlag.walk => 'walk',
-      SessionFlag.jog => 'jog',
-      SessionFlag.sprint => 'sprint',
-    };
-    return '${prefix}_${name ?? 'session_num'}_${_sensorCache[0][0].toString()}';
   }
 
   void _cacheData(AggregateSensorData data) {

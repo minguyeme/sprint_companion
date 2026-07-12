@@ -60,10 +60,55 @@ class _DataCollectorViewState extends State<DataCollectorView> {
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('Data Collector'),
-        backgroundColor: theme.colorScheme.primaryContainer,
-        foregroundColor: theme.colorScheme.onPrimaryContainer,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: ListenableBuilder(
+          listenable: _viewModel,
+          builder: (context, child) {
+            final (
+              statusLabel,
+              bgColor,
+              fgColor,
+            ) = switch (_viewModel.collectorStatus) {
+              CollectorStatus.inactive => (
+                'Uninitialised',
+                theme.colorScheme.surfaceContainer,
+                theme.colorScheme.onSurface,
+              ),
+              CollectorStatus.initialising => (
+                'Initialising',
+                theme.colorScheme.surfaceContainer,
+                theme.colorScheme.onSurface,
+              ),
+              CollectorStatus.idle => (
+                'Idle',
+                theme.colorScheme.primaryContainer,
+                theme.colorScheme.onPrimaryContainer,
+              ),
+              CollectorStatus.recording => (
+                'Recording',
+                theme.colorScheme.tertiaryContainer,
+                theme.colorScheme.onTertiaryContainer,
+              ),
+              CollectorStatus.cached => (
+                'Cached',
+                theme.colorScheme.secondaryContainer,
+                theme.colorScheme.onSecondaryContainer,
+              ),
+              CollectorStatus.processing => (
+                'Processing',
+                theme.colorScheme.secondaryContainer,
+                theme.colorScheme.onSecondaryContainer,
+              ),
+            };
+
+            return AppBar(
+              title: Text('Data Collector: $statusLabel'),
+              backgroundColor: bgColor,
+              foregroundColor: fgColor,
+            );
+          },
+        ),
       ),
       body: SafeArea(
         child: Padding(
@@ -147,19 +192,20 @@ class _DataCollectorViewState extends State<DataCollectorView> {
                     ),
                     CollectorStatus.processing => (
                       const Text('Save Recording'),
-                      theme.colorScheme.primaryContainer,
-                      theme.colorScheme.onPrimaryContainer,
+                      theme.colorScheme.secondaryContainer,
+                      theme.colorScheme.onSecondaryContainer,
                       null,
                     ),
                   };
-                  return AnimatedContainer(
-                    duration: Duration(milliseconds: 200),
+                  return Container(
                     decoration: BoxDecoration(
                       borderRadius: const BorderRadius.all(Radius.circular(13)),
                       boxShadow: [
                         if (action == null)
                           BoxShadow(
-                            color: theme.colorScheme.primary.withValues(alpha: 0.4),
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.4,
+                            ),
                             blurStyle: BlurStyle.outer,
                             blurRadius: 15,
                           ),
@@ -197,10 +243,106 @@ class _DataCollectorViewState extends State<DataCollectorView> {
                   );
                 },
               ),
+              Spacer(),
+              CacheInfo(viewModel: _viewModel, theme: theme, mediaQuery: mediaQuery),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class CacheInfo extends StatelessWidget {
+  const CacheInfo({
+    super.key,
+    required this._viewModel,
+    required this.theme,
+    required this.mediaQuery,
+  });
+
+  final DataCollectorViewModel _viewModel;
+  final ThemeData theme;
+  final MediaQueryData mediaQuery;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _viewModel,
+      builder: ((context, child) {
+        final (:maxSpeed, :maxSpeedAccuracy, :rows) =
+            _viewModel.cacheInfo;
+        if (_viewModel.collectorStatus != CollectorStatus.cached) {
+          return SizedBox.shrink();
+        }
+        return Card(
+          color: theme.colorScheme.surfaceContainer,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(13)),
+          ),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Trial Metrics',
+              labelStyle: theme.textTheme.titleLarge?.copyWith(
+                color: theme.textTheme.labelLarge?.color,
+              ),
+              border: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(13)),
+              ),
+            ),
+            isHovering: true,
+            child: Column(
+              spacing: mediaQuery.textScaler.scale(16),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TOTAL ROWS',
+                      style: theme.textTheme.labelSmall!.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      rows,
+                      style: theme.textTheme.titleLarge!.copyWith(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'MAX VELOCITY',
+                      style: theme.textTheme.labelSmall!.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      maxSpeed,
+                      style: theme.textTheme.titleLarge!.copyWith(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      maxSpeedAccuracy,
+                      style: theme.textTheme.labelSmall!.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:sprint_companion/core/file_storage/managed_file_data.dart';
 import 'data_collector_view_model.dart';
 import 'data_collector_repository.dart';
 import '../../core/file_storage/file_management_repository.dart';
@@ -48,6 +49,64 @@ class _DataCollectorViewState extends State<DataCollectorView> {
 
   void _handleCollectorError(CollectorError error) {
     //TODO: implement collector error handling
+  }
+
+  void _showRenameDialog(BuildContext context, ManagedFileData file) {
+    final renameController = TextEditingController(text: file.name);
+    final theme = Theme.of(context);
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(13)),
+          ),
+          title: Text('Rename Dataset'),
+          content: TextField(
+            controller: renameController,
+            autofocus: true, 
+            decoration: InputDecoration(
+                  border: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(13)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(13)),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                final newCleanName = renameController.text.trim();
+                if (newCleanName.isNotEmpty && newCleanName != file.name) {
+                  _viewModel.handleRename(
+                    file,
+                    name: newCleanName,
+                    uiOnError: _handleFileError,
+                  );
+                }
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    ).then((_) {
+      renameController.dispose();
+    });
   }
 
   @override
@@ -141,7 +200,6 @@ class _DataCollectorViewState extends State<DataCollectorView> {
                   ),
                 ),
               ),
-              Spacer(),
               ListenableBuilder(
                 listenable: _viewModel,
                 builder: (context, child) {
@@ -243,8 +301,124 @@ class _DataCollectorViewState extends State<DataCollectorView> {
                   );
                 },
               ),
-              Spacer(),
-              CacheInfo(viewModel: _viewModel, theme: theme, mediaQuery: mediaQuery),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    CacheInfo(
+                      viewModel: _viewModel,
+                      theme: theme,
+                      mediaQuery: mediaQuery,
+                    ),
+                    Flexible(
+                      fit: FlexFit.loose,
+                      child: ListenableBuilder(
+                        listenable: _viewModel,
+                        builder: (context, child) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: theme.colorScheme.outline,
+                              ),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(13),
+                              ),
+                            ),
+                            child: ListView.builder(
+                              itemCount: _viewModel.savedDatasets.length,
+                              itemBuilder: (context, index) {
+                                final file = _viewModel.savedDatasets[index];
+                                return ListTile(
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: mediaQuery.textScaler.scale(12),
+                                    vertical: mediaQuery.textScaler.scale(4),
+                                  ),
+                                  title: InkWell(
+                                    borderRadius: const BorderRadius.all(
+                                      Radius.circular(13),
+                                    ),
+                                    onTap: () =>
+                                        _showRenameDialog(context, file),
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: mediaQuery.textScaler.scale(
+                                          4,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        file.name,
+                                        style: theme.textTheme.bodyLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${(file.sizeInBytes / 1024).toStringAsFixed(1)} KB',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    spacing: mediaQuery.textScaler.scale(8),
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.share_rounded,
+                                          color: theme.colorScheme.secondary,
+                                        ),
+                                        onPressed: () {
+                                          _viewModel.handleShare(
+                                            file,
+                                            uiOnResult: (isSucessful) {
+                                              if (isSucessful) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      'Shared sucessfully!',
+                                                    ),
+                                                    backgroundColor: theme
+                                                        .colorScheme
+                                                        .tertiaryContainer,
+                                                    duration: Duration(
+                                                      seconds: 3,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            },
+                                          );
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.delete_outline_rounded,
+                                          color:
+                                              theme.colorScheme.errorContainer,
+                                        ),
+                                        onPressed: () {
+                                          _viewModel.handleDelete(
+                                            file,
+                                            uiOnError: _handleFileError,
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -270,8 +444,7 @@ class CacheInfo extends StatelessWidget {
     return ListenableBuilder(
       listenable: _viewModel,
       builder: ((context, child) {
-        final (:maxSpeed, :maxSpeedAccuracy, :rows) =
-            _viewModel.cacheInfo;
+        final (:maxSpeed, :maxSpeedAccuracy, :rows) = _viewModel.cacheInfo;
         if (_viewModel.collectorStatus != CollectorStatus.cached) {
           return SizedBox.shrink();
         }

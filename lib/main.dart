@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'features/data_collector/data_collector_repository.dart';
-import 'features/data_collector/data_collector_view.dart';
+import 'features/data_collector/data_collector_view/data_collector_view.dart';
 import 'core/file_storage/file_management_repository.dart';
 import 'core/file_storage/file_service.dart';
 import 'core/sensor_capture/sensor_service.dart';
@@ -37,20 +37,50 @@ class MyApp extends StatelessWidget {
   final FileManagementRepository fileRepository;
   final DataCollectorRepository collectorRepository;
 
-  const MyApp({
+  MyApp({
     super.key,
     required this.fileRepository,
     required this.collectorRepository,
   });
+
+  final colorScheme = ColorScheme.fromSeed(
+    seedColor: Colors.blueAccent,
+    brightness: Brightness.dark,
+  );
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Sprint Companion',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blueAccent,
-          brightness: Brightness.dark,
+        colorScheme: colorScheme,
+        cardTheme: CardThemeData(
+          color: colorScheme.surfaceContainer,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(15)),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationThemeData(
+          border: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(8)),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(64),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(23)),
+            ),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+        dialogTheme: DialogThemeData(
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(15)),
+          ),
         ),
       ),
       home: DataCollectorView(

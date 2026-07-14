@@ -10,15 +10,14 @@ class CacheInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final mediaQuery = MediaQuery.of(context);
 
     return ListenableBuilder(
       listenable: _viewModel,
       builder: ((context, child) {
-        final (:maxSpeed, :maxSpeedAccuracy, :rows) = _viewModel.cacheInfo;
         if (_viewModel.collectorStatus != CollectorStatus.cached) {
           return SizedBox.shrink();
         }
+        final (:maxSpeed, :maxSpeedAccuracy, :rows) = _viewModel.cacheInfo;
         return Card(
           margin: EdgeInsets.all(0),
           child: InputDecorator(
@@ -27,18 +26,12 @@ class CacheInfo extends StatelessWidget {
               labelStyle: theme.textTheme.titleLarge?.copyWith(
                 color: theme.textTheme.labelLarge?.color,
               ),
+              border: OutlineInputBorder(borderRadius: (theme.cardTheme.shape as RoundedRectangleBorder).borderRadius as BorderRadius)
             ),
-            isHovering: true,
             child: Column(
-              spacing: mediaQuery.textScaler.scale(16),
+              spacing: 16,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Trial Metrics',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: theme.textTheme.labelLarge?.color,
-                  ),
-                ),
                 MetricTile(label: 'TOTAL ROWS', data: rows),
                 MetricTile(
                   label: 'MAX SPEED',
@@ -98,4 +91,3 @@ class MetricTile extends StatelessWidget {
     );
   }
 }
-

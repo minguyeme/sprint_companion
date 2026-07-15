@@ -5,6 +5,7 @@ import '../data_collector_repository.dart';
 import 'widgets/primary_action_button.dart';
 import 'widgets/cache_info.dart';
 import 'widgets/expanded_datasets_list.dart';
+import 'widgets/status_message_card.dart';
 
 class DataCollectorView extends StatefulWidget {
   final FileManagementRepository fileRepository;
@@ -22,7 +23,7 @@ class DataCollectorView extends StatefulWidget {
 
 class _DataCollectorViewState extends State<DataCollectorView> {
   late final DataCollectorViewModel _viewModel;
-  
+
   @override
   void initState() {
     super.initState();
@@ -120,8 +121,13 @@ class _DataCollectorViewState extends State<DataCollectorView> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+              StatusMessageCard(viewModel: _viewModel),
+              const SizedBox(height: 16),
               PrimaryActionButton(viewModel: _viewModel),
+              const SizedBox(height: 12),
               CacheInfo(viewModel: _viewModel),
+              const SizedBox(height: 16),
               ExpandedDatasetsList(viewModel: _viewModel),
             ],
           ),

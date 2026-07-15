@@ -67,7 +67,7 @@ class PrimaryActionButton extends StatelessWidget {
         };
         return Container(
           decoration: BoxDecoration(
-            borderRadius: const BorderRadius.all(Radius.circular(13)),
+            borderRadius: (theme.filledButtonTheme.style?.shape?.resolve({}) as RoundedRectangleBorder?)?.borderRadius,
             boxShadow: [
               if (action == null)
                 BoxShadow(

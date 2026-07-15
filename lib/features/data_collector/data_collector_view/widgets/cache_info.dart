@@ -18,19 +18,28 @@ class CacheInfo extends StatelessWidget {
           return SizedBox.shrink();
         }
         final (:maxSpeed, :maxSpeedAccuracy, :rows) = _viewModel.cacheInfo;
+
         return Card(
-          margin: EdgeInsets.all(0),
           child: InputDecorator(
             decoration: InputDecoration(
               labelText: 'Trial Metrics',
               labelStyle: theme.textTheme.titleLarge?.copyWith(
                 color: theme.textTheme.labelLarge?.color,
               ),
-              border: OutlineInputBorder(borderRadius: (theme.cardTheme.shape as RoundedRectangleBorder).borderRadius as BorderRadius)
+              enabledBorder: OutlineInputBorder(
+                borderRadius:
+                    (theme.cardTheme.shape as RoundedRectangleBorder)
+                            .borderRadius
+                        as BorderRadius,
+                borderSide: BorderSide(
+                  color: theme.colorScheme.outlineVariant,
+                  width: 1,
+                ),
+              ),
             ),
             child: Column(
               spacing: 16,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 MetricTile(label: 'TOTAL ROWS', data: rows),
                 MetricTile(

@@ -13,7 +13,8 @@ class DataCollectorViewModel extends ChangeNotifier {
   StreamSubscription<FileManagementStatus>? _fileStatusSubscription;
   StreamSubscription<List<ManagedFileData>>? _managedFilesSubscription;
   StreamSubscription<CollectorStatus>? _collectorStatusSubscription;
-  String _statusMessage = 'Awaiting sensors';
+  String? _statusMessage;
+  bool _isFailure = false;
 
   FileManagementStatus _fileStatus = FileManagementStatus.inactive;
   CollectorStatus _collectorStatus = CollectorStatus.inactive;
@@ -55,7 +56,8 @@ class DataCollectorViewModel extends ChangeNotifier {
   FileManagementStatus get fileStatus => _fileStatus;
   CollectorStatus get collectorStatus => _collectorStatus;
   List<ManagedFileData> get savedDatasets => _savedDatasets;
-  String get statusMessage => _statusMessage;
+  String? get statusMessage => _statusMessage;
+  bool get isFailure => _isFailure;
 
   ({String rows, String maxSpeed, String maxSpeedAccuracy}) get cacheInfo => (
     rows: '${_cachedInfo.rows} rows',
@@ -105,10 +107,11 @@ class DataCollectorViewModel extends ChangeNotifier {
       file,
       onResult: (bool isSucessful) {
         if (isSucessful) {
-          _statusMessage = 'File shared successfully.';
+          _statusMessage = 'File shared successfully';
         } else {
-          _statusMessage = 'Failed to share file.';
+          _statusMessage = 'Failed to share file';
         }
+        _isFailure = false;
         notifyListeners();
       },
     );
@@ -117,9 +120,9 @@ class DataCollectorViewModel extends ChangeNotifier {
   void _handleFileError(FileManagementError error) {
     _statusMessage = switch (error) {
       FileManagementError.alreadyActive =>
-        'A file management instance is already running.',
+        'File management already active',
       FileManagementError.unknownFile =>
-        'Could not read or write data. Please check your storage availability.',
+        'Unknown storage failure',
     };
     notifyListeners();
   }
@@ -127,38 +130,39 @@ class DataCollectorViewModel extends ChangeNotifier {
   void _handleCollectorError(CollectorError error) {
     _statusMessage = switch (error) {
       CollectorError.inactiveService =>
-        'Collector is uninitialised. Please initialise or restart the page',
+        'Collector is uninitialised',
 
       CollectorError.activeService =>
-        'A collection session is already running.',
+        'Collector already initialised',
 
       CollectorError.activeRecording =>
-        'Cannot perform action while recording is actively running.',
+        'Collector is recording',
 
       CollectorError.noRecording =>
-        'No active recording session was found to stop or save.',
+        'Collector not recording',
 
       CollectorError.gpsDisabled =>
-        'GPS is turned off. Please enable location services.',
+        'Location service is off',
 
       CollectorError.gpsDenied =>
-        'Location permission denied. The app needs gps to function.',
+        'GPS permission denied',
 
       CollectorError.gpsPermaDenied =>
-        'Location access is blocked. Please enable it in your device\'s settings',
+        'GPS use is permanently blocked',
 
       CollectorError.preciseGpsDenied =>
-        'Precise location is required. Please allow precise location.',
+        'Precise location is blocked',
 
       CollectorError.outOfStorage =>
-        'Storage is full. Please clear some space on your device.',
+        'Storage is full',
 
       CollectorError.sensorUnknown =>
-        'Failed to connect to tracking sensors. Please restart the app.',
+        'Unknown sensor failure',
 
       CollectorError.fileUnknown =>
-        'Could not read or write data. Please check your storage availability.',
+        'Unknown storage failure',
     };
+    _isFailure = true;
     notifyListeners();
   }
 

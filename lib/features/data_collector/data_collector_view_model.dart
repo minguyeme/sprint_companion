@@ -92,6 +92,8 @@ class DataCollectorViewModel extends ChangeNotifier {
         );
       default:
     }
+    _statusMessage = null;
+    _isFailure = false;
   }
 
   void handleDelete(ManagedFileData file) {
@@ -103,15 +105,36 @@ class DataCollectorViewModel extends ChangeNotifier {
   }
 
   void handleShare(ManagedFileData file) {
-    _fileRepository.share(
-      file,
+    _fileRepository.shareFiles(
+      [file],
       onResult: (bool isSucessful) {
         if (isSucessful) {
-          _statusMessage = 'File shared successfully';
+          _statusMessage = 'Dataset shared successfully';
         } else {
-          _statusMessage = 'Failed to share file';
+          _statusMessage = 'Failed to share dataset';
+          _isFailure = true;
         }
-        _isFailure = false;
+        notifyListeners();
+      },
+    );
+  }
+
+  void handleBulkShare() {
+    if (savedDatasets.isEmpty) {
+      _statusMessage = 'No datasets to share';
+      _isFailure = true;
+      notifyListeners();
+      return;
+    }
+    _fileRepository.shareFiles(
+      savedDatasets,
+      onResult: (bool isSucessful) {
+        if (isSucessful) {
+          _statusMessage = 'Datasets shared successfully';
+        } else {
+          _statusMessage = 'Failed to share datasets';
+          _isFailure = true;
+        }
         notifyListeners();
       },
     );
@@ -119,48 +142,35 @@ class DataCollectorViewModel extends ChangeNotifier {
 
   void _handleFileError(FileManagementError error) {
     _statusMessage = switch (error) {
-      FileManagementError.alreadyActive =>
-        'File management already active',
-      FileManagementError.unknownFile =>
-        'Unknown storage failure',
+      FileManagementError.alreadyActive => 'File management already active',
+      FileManagementError.unknownFile => 'Unknown storage failure',
     };
     notifyListeners();
   }
 
   void _handleCollectorError(CollectorError error) {
     _statusMessage = switch (error) {
-      CollectorError.inactiveService =>
-        'Collector is uninitialised',
+      CollectorError.inactiveService => 'Collector is uninitialised',
 
-      CollectorError.activeService =>
-        'Collector already initialised',
+      CollectorError.activeService => 'Collector already initialised',
 
-      CollectorError.activeRecording =>
-        'Collector is recording',
+      CollectorError.activeRecording => 'Collector is recording',
 
-      CollectorError.noRecording =>
-        'Collector not recording',
+      CollectorError.noRecording => 'Collector not recording',
 
-      CollectorError.gpsDisabled =>
-        'Location service is off',
+      CollectorError.gpsDisabled => 'Location service is off',
 
-      CollectorError.gpsDenied =>
-        'GPS permission denied',
+      CollectorError.gpsDenied => 'GPS permission denied',
 
-      CollectorError.gpsPermaDenied =>
-        'GPS use is permanently blocked',
+      CollectorError.gpsPermaDenied => 'GPS use is permanently blocked',
 
-      CollectorError.preciseGpsDenied =>
-        'Precise location is blocked',
+      CollectorError.preciseGpsDenied => 'Precise location is blocked',
 
-      CollectorError.outOfStorage =>
-        'Storage is full',
+      CollectorError.outOfStorage => 'Storage is full',
 
-      CollectorError.sensorUnknown =>
-        'Unknown sensor failure',
+      CollectorError.sensorUnknown => 'Unknown sensor failure',
 
-      CollectorError.fileUnknown =>
-        'Unknown storage failure',
+      CollectorError.fileUnknown => 'Unknown storage failure',
     };
     _isFailure = true;
     notifyListeners();

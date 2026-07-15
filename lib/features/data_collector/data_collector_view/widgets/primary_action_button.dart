@@ -24,42 +24,42 @@ class PrimaryActionButton extends StatelessWidget {
         ) = switch (_viewModel.collectorStatus) {
           CollectorStatus.inactive => (
             Icons.sensors_rounded,
-            const Text('Initialise Sensors'),
+            'Initialise Sensors',
             theme.colorScheme.surfaceContainer,
             theme.colorScheme.onSurface,
             _viewModel.initialiseScreen,
           ),
           CollectorStatus.initialising => (
             Icons.sensors_rounded,
-            const Text('Initialise Sensors'),
+            'Initialise Sensors',
             theme.colorScheme.surfaceContainer,
             theme.colorScheme.onSurface,
             null,
           ),
           CollectorStatus.idle => (
             Icons.play_arrow_rounded,
-            const Text('Start Recording'),
+            'Start Recording',
             theme.colorScheme.primaryContainer,
             theme.colorScheme.onPrimaryContainer,
             _viewModel.handlePrimaryButtonPress,
           ),
           CollectorStatus.recording => (
             Icons.stop_rounded,
-            const Text('Stop Recording'),
+            'Stop Recording',
             theme.colorScheme.tertiaryContainer,
             theme.colorScheme.onTertiaryContainer,
             _viewModel.handlePrimaryButtonPress,
           ),
           CollectorStatus.cached => (
             Icons.save_alt_rounded,
-            const Text('Save Recording'),
+            'Save Recording',
             theme.colorScheme.secondaryContainer,
             theme.colorScheme.onSecondaryContainer,
             _viewModel.handlePrimaryButtonPress,
           ),
           CollectorStatus.processing => (
             Icons.save_alt_rounded,
-            const Text('Save Recording'),
+            'Save Recording',
             theme.colorScheme.secondaryContainer,
             theme.colorScheme.onSecondaryContainer,
             null,
@@ -67,7 +67,10 @@ class PrimaryActionButton extends StatelessWidget {
         };
         return Container(
           decoration: BoxDecoration(
-            borderRadius: (theme.filledButtonTheme.style?.shape?.resolve({}) as RoundedRectangleBorder?)?.borderRadius,
+            borderRadius:
+                (theme.filledButtonTheme.style?.shape?.resolve({})
+                        as RoundedRectangleBorder?)
+                    ?.borderRadius,
             boxShadow: [
               if (action == null)
                 BoxShadow(
@@ -90,8 +93,14 @@ class PrimaryActionButton extends StatelessWidget {
               disabledBackgroundColor: bgColor.withValues(alpha: 0.12),
               disabledForegroundColor: fgColor.withValues(alpha: 0.38),
             ),
-            icon: Icon(buttonIcon),
-            label: buttonLabel,
+            icon: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Icon(buttonIcon, key: ValueKey(buttonIcon)),
+            ),
+            label: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Text(buttonLabel, key: ValueKey(buttonLabel)),
+            ),
           ),
         );
       },

@@ -86,14 +86,17 @@ class FileManagementRepository {
     }
   }
 
-  Future<void> share(
-    ManagedFileData file, {
+  Future<void> shareFiles(
+    Iterable<ManagedFileData> files, {
     required void Function(bool) onResult,
   }) async {
     try {
-      final params = ShareParams(text: file.name, files: [XFile(file.path)]);
+      final params = ShareParams(
+        files: files.map((file) => XFile(file.path)).toList(),
+      );
       final result = await SharePlus.instance.share(params);
       onResult(result.status == ShareResultStatus.success);
+      
     } catch (_) {
       onResult(false);
       return;

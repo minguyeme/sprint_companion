@@ -13,6 +13,7 @@ class StatusMessageCard extends StatefulWidget {
 class _StatusMessageCardState extends State<StatusMessageCard> {
   static const _defaultMessage = 'Operational';
   String _displayMessage = _defaultMessage;
+  bool _isFailure = false;
 
   @override
   Widget build(BuildContext context) {
@@ -21,25 +22,16 @@ class _StatusMessageCardState extends State<StatusMessageCard> {
     return ListenableBuilder(
       listenable: widget.viewModel,
       builder: (context, child) {
-        if (widget.viewModel.statusMessage != null) {
-          _displayMessage = widget.viewModel.statusMessage!;
-
-          Future.delayed(const Duration(seconds: 3), () {
-            if (!mounted) return;
-
-            setState(() {
-              _displayMessage = _defaultMessage;
-            });
-          });
-        }
+        _displayMessage = widget.viewModel.statusMessage ?? _defaultMessage;
+        _isFailure = widget.viewModel.isFailure;
 
         return Card(
           child: ListTile(
             leading: Icon(
-              widget.viewModel.isFailure
+              _isFailure
                   ? Icons.error_outline_rounded
                   : Icons.info_outline_rounded,
-              color: widget.viewModel.isFailure
+              color: _isFailure
                   ? theme.colorScheme.error
                   : theme.colorScheme.primary,
             ),
@@ -48,8 +40,6 @@ class _StatusMessageCardState extends State<StatusMessageCard> {
               child: Text(
                 _displayMessage,
                 key: ValueKey(_displayMessage),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),

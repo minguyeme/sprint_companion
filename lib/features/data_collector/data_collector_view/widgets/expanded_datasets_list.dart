@@ -17,7 +17,16 @@ class ExpandedDatasetsList extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 8,
         children: [
-          Text('Datasets', style: theme.textTheme.titleLarge),
+          Row(
+            children: [
+              Text('Datasets', style: theme.textTheme.titleLarge),
+              Spacer(),
+              IconButton(
+                onPressed: _viewModel.handleBulkShare,
+                icon: Icon(Icons.ios_share_rounded, color: theme.colorScheme.secondary)
+              ),
+            ],
+          ),
           Expanded(
             child: ListenableBuilder(
               listenable: _viewModel,

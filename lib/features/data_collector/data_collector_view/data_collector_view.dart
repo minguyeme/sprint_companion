@@ -4,7 +4,7 @@ import '../data_collector_view_model.dart';
 import '../data_collector_repository.dart';
 import 'widgets/primary_action_button.dart';
 import 'widgets/cache_info.dart';
-import 'widgets/flexible_datasets_list.dart';
+import 'widgets/expanded_datasets_list.dart';
 
 class DataCollectorView extends StatefulWidget {
   final FileManagementRepository fileRepository;
@@ -21,14 +21,16 @@ class DataCollectorView extends StatefulWidget {
 }
 
 class _DataCollectorViewState extends State<DataCollectorView> {
-  late final DataCollectorViewModel _viewModel = DataCollectorViewModel(
-    fileRepository: widget.fileRepository,
-    collectorRepository: widget.collectorRepository,
-  );
-
+  late final DataCollectorViewModel _viewModel;
+  
   @override
   void initState() {
     super.initState();
+
+    _viewModel = DataCollectorViewModel(
+      fileRepository: widget.fileRepository,
+      collectorRepository: widget.collectorRepository,
+    );
 
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _viewModel.initialiseScreen(),
@@ -119,17 +121,8 @@ class _DataCollectorViewState extends State<DataCollectorView> {
                 ),
               ),
               PrimaryActionButton(viewModel: _viewModel),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    CacheInfo(viewModel: _viewModel),
-                    FlexibleDatasetsList(
-                      viewModel: _viewModel,
-                    ),
-                  ],
-                ),
-              ),
+              CacheInfo(viewModel: _viewModel),
+              ExpandedDatasetsList(viewModel: _viewModel),
             ],
           ),
         ),

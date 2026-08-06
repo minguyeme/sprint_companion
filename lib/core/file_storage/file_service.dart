@@ -116,7 +116,7 @@ class FileService {
       final parentDir = path.substring(0, path.lastIndexOf('/'));
       await File(
         path,
-      ).rename('$parentDir/$name${path.substring(path.lastIndexOf('.'))}');
+      ).rename('$parentDir/$name');
       _notifyStreamFromPath(path);
     } on FileSystemException catch (exception, stackTrace) {
       developer.log(

@@ -44,5 +44,5 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Workspace file
-/sprint_companion.code-workspace
+#Virtual environment 
+ml_automation/.venv/

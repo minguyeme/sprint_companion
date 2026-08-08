@@ -23,24 +23,36 @@ def check_sampling_rates(path):
         print(f"Median delta: {delta.iloc[1:,0].median()}")
         print(f"Max delta: {delta.iloc[1:,0].max()}")
 
-def plot_sensor_streams(path):
+def plot_sensor_streams(path, gps=True, zoom=False, scale=2000, loc=2000):
     df = pd.read_csv(path)
-    
+
     fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(18, 11))
     axes = axes.flatten()
 
-    gps_start_idx = df.columns.get_loc("gps_timestamp")
-    gps_df = df.iloc[:, gps_start_idx : gps_start_idx + 3].drop_duplicates()
-    gps_df["gps_timestamp"] = gps_df["gps_timestamp"] - gps_df["gps_timestamp"].iloc[0]
+    if gps == True:
+        gps_start_idx = df.columns.get_loc("gps_timestamp")
+        gps_df = df.iloc[:, gps_start_idx : gps_start_idx + 3].drop_duplicates()
+        gps_df["gps_timestamp"] = (
+            gps_df["gps_timestamp"] - gps_df["gps_timestamp"].iloc[0]
+        )
+        if zoom == True:
+            gps_df = gps_df[
+                (gps_df["gps_timestamp"] <= loc + scale)
+                & (gps_df["gps_timestamp"] >= loc - scale)
+            ]
 
     data_cols = ["raw_accel_", "clean_accel_", "gyro_"]
     for i, sensor_cols in enumerate(data_cols):
         sensor_df = df.filter(regex=f"^{sensor_cols}").drop_duplicates()
-
         timestamp_col = f"{sensor_cols}timestamp"
         sensor_df[timestamp_col] = (
             sensor_df[timestamp_col] - sensor_df[timestamp_col].iloc[0]
         )
+        if zoom == True:
+            sensor_df = sensor_df[
+                (sensor_df[timestamp_col] <= loc + scale)
+                & (sensor_df[timestamp_col] >= loc - scale)
+            ]
 
         sensor_df[f"{sensor_cols}magnitude"] = np.sqrt(
             sensor_df[f"{sensor_cols}x"] ** 2
@@ -51,18 +63,29 @@ def plot_sensor_streams(path):
         axes[i].set_title(sensor_cols[:-1])
         axes[i].plot(sensor_df[timestamp_col], sensor_df[f"{sensor_cols}magnitude"])
 
-        ax_speed = axes[i].twinx()
-        ax_speed.plot(gps_df["gps_timestamp"], gps_df["speed"], color="green")
-        ax_speed.fill_between(
-            gps_df["gps_timestamp"],
-            gps_df["speed"] - gps_df["speed_accuracy"],
-            gps_df["speed"] + gps_df["speed_accuracy"],
-            color="green",
-            alpha=0.15,
-        )
-        axes[i].set_xticks(np.arange(0, sensor_df[timestamp_col].iloc[-1], 1000), minor=True)
-        axes[i].grid(True, which='minor', axis='x', alpha=0.5)
-        axes[i].grid(True, which='major', axis='x', alpha=1)
+        if gps == True:
+            ax_speed = axes[i].twinx()
+            ax_speed.plot(gps_df["gps_timestamp"], gps_df["speed"], color="green")
+            ax_speed.fill_between(
+                gps_df["gps_timestamp"],
+                gps_df["speed"] - gps_df["speed_accuracy"],
+                gps_df["speed"] + gps_df["speed_accuracy"],
+                color="green",
+                alpha=0.15,
+            )
+        if zoom == False:
+            axes[i].set_xticks(
+                np.arange(
+                    sensor_df[timestamp_col].iloc[0],
+                    sensor_df[timestamp_col].iloc[-1] + 1000,
+                    1000,
+                ),
+                minor=True,
+            )
+            axes[i].grid(True, which="minor", axis="x", alpha=0.5)
+            axes[i].grid(True, which="major", axis="x", alpha=1)
+        else:
+            axes[i].grid(True, which="major", axis="x", alpha=0.5)
 
     plt.tight_layout()
     plt.show()

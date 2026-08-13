@@ -51,4 +51,7 @@ def mark(path, df, ax, *timestamps):
     df.loc[path] = timestamps
 
     for timestamp in timestamps:
-        ax.axvline(x=timestamp, color="green", linestyle="--", linewidth=2)
+        min_x, max_x = ax.dataLim.intervalx
+
+        if (timestamp >= min_x) & (timestamp <= max_x):
+            ax.axvline(x=timestamp, color="green", linestyle="--", linewidth=2)

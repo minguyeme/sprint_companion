@@ -1,5 +1,3 @@
-// ignore_for_file: unnecessary_new
-
 List<double> score(List<double> input) {
     List<double> var0;
     if (input[1] <= 31.513120651245117) {
@@ -665,7 +663,7 @@ List<double> addVectors(List<double> v1, List<double> v2) {
     return result;
 }
 List<double> mulVectorNumber(List<double> v1, double num) {
-    List<double> result = new List<double>.filled(v1.length, 0.0);
+    List<double> result = List<double>.filled(v1.length, 0.0);
     for (int i = 0; i < v1.length; i++) {
         result[i] = v1[i] * num;
     }

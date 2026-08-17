@@ -4,9 +4,17 @@ import '../../core/sensor_capture/aggregate_sensor_data.dart';
 import '../../core/sensor_capture/sensor_service.dart';
 import '../../core/classification/classifier_service.dart';
 
+const _classifierFrequency = 1;
+const _dataStreamFrequency = 50;
+const int _dataStreamWaitTimeInMs = 1000 ~/ _dataStreamFrequency;
+//_dataStreamFrequency must be divisible by _classifierFrequency
+const int _classificationRatio = _dataStreamFrequency~/_dataStreamFrequency;
+
 enum AnalyzerError {
   inactiveService,
   activeService,
+  activeCapture,
+  emptyLogs,
   gpsDisabled,
   gpsDenied,
   gpsPermaDenied,
@@ -14,7 +22,14 @@ enum AnalyzerError {
   sensorUnknown,
 }
 
-enum AnalyzerStatus { inactive, initializing, idle, analyzing }
+enum AnalyzerStatus {
+  inactive,
+  initializing,
+  idle,
+  capturing,
+  analyzing,
+  analyzed,
+}
 
 class SprintAnalyzerRepository {
   final SensorService _sensorService;
@@ -22,9 +37,12 @@ class SprintAnalyzerRepository {
   final _statusController = BehaviorSubject<AnalyzerStatus>.seeded(
     AnalyzerStatus.inactive,
   );
+  final List<AggregateSensorData> _sessionLog = [];
+  final List<Classification> _classificationLog = [];
 
   StreamSubscription<AggregateSensorData>? _sensorSubscription;
   StreamSubscription<SensorStatus>? _statusSubscription;
+  StreamSubscription<Classification>? _classifierSubscription;
 
   SprintAnalyzerRepository({
     required this._sensorService,
@@ -41,15 +59,23 @@ class SprintAnalyzerRepository {
       }
 
       _statusSubscription = _sensorService.statusStream.listen((sensorStatus) {
-        _statusController.add(switch (sensorStatus) {
-          SensorStatus.inactive => AnalyzerStatus.inactive,
-          SensorStatus.initialising => AnalyzerStatus.initializing,
-          SensorStatus.active => AnalyzerStatus.idle,
-        });
+        final AnalyzerStatus status;
+
+        switch (sensorStatus) {
+          case SensorStatus.inactive:
+            _classifierService.dispose();
+            status = AnalyzerStatus.inactive;
+          case SensorStatus.initialising:
+            status = AnalyzerStatus.initializing;
+          case SensorStatus.active:
+            _classifierService.initialize(_sensorService.sensorStream);
+            status = AnalyzerStatus.idle;
+        }
+
+        _statusController.add(status);
       });
 
       await _sensorService.initialiseSensor();
-      _classifierService.initialize(_sensorService.sensorStream);
     } on SensorException catch (exception) {
       switch (exception) {
         case ServiceInactiveException():
@@ -70,11 +96,64 @@ class SprintAnalyzerRepository {
     }
   }
 
+  void startCapture({required void Function(AnalyzerError) onError}) {
+    if (_statusController.value != AnalyzerStatus.idle) {
+      switch (_statusController.value) {
+        case AnalyzerStatus.inactive:
+          onError(AnalyzerError.inactiveService);
+        default:
+          onError(AnalyzerError.activeCapture);
+      }
+      return;
+    }
+
+    _statusController.add(AnalyzerStatus.capturing);
+    _sensorSubscription = _sensorService.sensorStream
+        .where((_) => _statusController.value == AnalyzerStatus.capturing)
+        .throttleTime(const Duration(milliseconds: _dataStreamWaitTimeInMs))
+        .listen(
+          (data) => _sessionLog.add(data),
+          onError: (error) => switch (error) {
+            GpsDeniedException() => onError(AnalyzerError.gpsDenied),
+            GpsDisabledException() => onError(AnalyzerError.gpsDisabled),
+            GpsPermaDeniedException() => onError(AnalyzerError.gpsPermaDenied),
+            PreciseGpsDeniedException() => onError(
+              AnalyzerError.preciseGpsDenied,
+            ),
+            _ => onError(AnalyzerError.sensorUnknown),
+          },
+        );
+    _classifierSubscription = _classifierService.classificationStream
+        .where((_) => _statusController.value == AnalyzerStatus.capturing)
+        .listen((classification) => _classificationLog.add(classification));
+  }
+
+  Future<void> stopCapture({
+    required void Function(AnalyzerError) onError,
+  }) async {
+    if (_statusController.value != AnalyzerStatus.capturing ||
+        _classificationLog.isEmpty) {
+      switch (_statusController.value) {
+        case AnalyzerStatus.inactive:
+          onError(AnalyzerError.inactiveService);
+        default:
+          onError(AnalyzerError.emptyLogs);
+      }
+      return;
+    }
+
+    _statusController.add(AnalyzerStatus.analyzing);
+    await _sensorSubscription?.cancel();
+
+    _sessionLog.length = (_sessionLog.length ~/ _classificationRatio) * _classificationRatio;
+  }
+
   Future<void> dipose() async {
     _sensorService.dispose();
     _classifierService.dispose();
     await _statusSubscription?.cancel();
     await _sensorSubscription?.cancel();
+    await _classifierSubscription?.cancel();
     await _statusController.close();
   }
 }

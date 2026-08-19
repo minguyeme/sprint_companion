@@ -1,5 +1,7 @@
+import 'dart:math';
 import 'dart:async';
 import 'package:rxdart/rxdart.dart';
+import 'package:flutter/foundation.dart';
 import '../../core/sensor_capture/aggregate_sensor_data.dart';
 import '../../core/sensor_capture/sensor_service.dart';
 import '../../core/classification/classifier_service.dart';
@@ -15,11 +17,25 @@ enum AnalyzerError {
   sensorUnknown,
 }
 
-enum AnalyzerStatus { inactive, initializing, idle, capturing, analyzed }
+enum AnalyzerStatus {
+  inactive,
+  initializing,
+  idle,
+  capturing,
+  analyzing,
+  analyzed,
+}
 
 typedef SessionSample = ({
   AggregateSensorData data,
   Classification classification,
+});
+
+typedef Analysis = ({
+  double? sessionDuration,
+  double? intenseDuration,
+  double? maxGForce,
+  double? fatigueIndex,
 });
 
 class SprintAnalyzerRepository {
@@ -31,10 +47,12 @@ class SprintAnalyzerRepository {
   final List<AggregateSensorData> _stagingBuffer = [];
   final List<SessionSample> _sessionLog = [];
 
-  double? _sessionDuration;
-  double? _intenseDuration;
-  double? _maxGForce;
-  double? _fatigueIndex;
+  Analysis _analysis = (
+    sessionDuration: null,
+    intenseDuration: null,
+    maxGForce: null,
+    fatigueIndex: null,
+  );
 
   StreamSubscription<AggregateSensorData>? _sensorSubscription;
   StreamSubscription<SensorStatus>? _statusSubscription;
@@ -45,11 +63,8 @@ class SprintAnalyzerRepository {
     required this._classifierService,
   });
 
-  List<SessionSample> get sessionLog => _sessionLog;
-  double? get sessionDuration => _sessionDuration;
-  double? get intenseDuration => _intenseDuration;
-  double? get maxGForce => _maxGForce;
-  double? get fatigueIndex => _fatigueIndex;
+  List<SessionSample> get sessionLog => List.unmodifiable(_sessionLog);
+  Analysis get analysis => _analysis;
 
   Future<void> initialize({
     required void Function(AnalyzerError) onError,
@@ -60,12 +75,13 @@ class SprintAnalyzerRepository {
         return;
       }
 
+      await _statusSubscription?.cancel();
       _statusSubscription = _sensorService.statusStream.listen((sensorStatus) {
         final AnalyzerStatus status;
 
         switch (sensorStatus) {
           case SensorStatus.inactive:
-            _classifierService.dispose();
+            reset();
             status = AnalyzerStatus.inactive;
           case SensorStatus.initialising:
             status = AnalyzerStatus.initializing;
@@ -145,30 +161,134 @@ class SprintAnalyzerRepository {
       return;
     }
 
-    _statusController.add(AnalyzerStatus.analyzed);
+    _statusController.add(AnalyzerStatus.analyzing);
     _stagingBuffer.clear();
     await _classifierSubscription?.cancel();
     await _sensorSubscription?.cancel();
+    await _analyze(_sessionLog);
   }
 
-  Future<void> dipose() async {
-    _sensorService.dispose();
-    _classifierService.dispose();
+  Future<void> reset() async {
+    if (_statusController.value == AnalyzerStatus.inactive ||
+        _statusController.value == AnalyzerStatus.initializing) {
+      return;
+    }
+
+    _sessionLog.clear();
+    _stagingBuffer.clear();
+    await _classifierSubscription?.cancel();
+    await _sensorSubscription?.cancel();
+    _analysis = (
+      sessionDuration: null,
+      intenseDuration: null,
+      maxGForce: null,
+      fatigueIndex: null,
+    );
+    _statusController.add(AnalyzerStatus.idle);
+  }
+
+  Future<void> dispose() async {
     await _statusSubscription?.cancel();
     await _sensorSubscription?.cancel();
     await _classifierSubscription?.cancel();
     await _statusController.close();
+    _sensorService.dispose();
+    _classifierService.dispose();
   }
 
-  void _analyze(List<SessionSample> log) {
-    if (log.isEmpty) {
-      _sessionDuration = null;
-      _intenseDuration = null;
-      _maxGForce = null;
-      _fatigueIndex = null;
+  Future<void> _analyze(List<SessionSample> log) async {
+    final analysis = await compute(_analyzeWorker, log);
+
+    if (_statusController.value != AnalyzerStatus.analyzing) {
       return;
     }
 
-    _sessionDuration = _sessionLog.length * 0.02;
+    _analysis = analysis;
+    _statusController.add(AnalyzerStatus.analyzed);
   }
+}
+
+Analysis _analyzeWorker(List<SessionSample> log) {
+  double? sessionDuration;
+  double? intenseDuration;
+  double? maxGForce;
+  double? fatigueIndex;
+
+  if (log.isNotEmpty) {
+    sessionDuration = log.length * 0.02;
+  }
+
+  int intenseCount = 0;
+  int? firstIntenseIndex;
+  int lastIntenseIndex = 0;
+  if (log.isNotEmpty) {
+    for (final (int index, SessionSample(:classification)) in log.indexed) {
+      if (classification == Classification.intense) {
+        intenseCount += 1;
+        firstIntenseIndex ??= index;
+        lastIntenseIndex = index;
+      }
+    }
+    intenseDuration = intenseCount * 0.02;
+  }
+  final int? intenseMidpoint =
+      intenseCount > 1 &&
+          (intenseCount == (lastIntenseIndex - firstIntenseIndex! + 1))
+      ? firstIntenseIndex + intenseCount ~/ 2
+      : null;
+
+  if (log.isNotEmpty) {
+    double maxMagnitudeSquared = 0;
+    for (final SessionSample(:data) in log) {
+      final AggregateSensorData(:cleanAccel) = data;
+
+      final double magnitudeSquared =
+          cleanAccel.x * cleanAccel.x +
+          cleanAccel.y * cleanAccel.y +
+          cleanAccel.z * cleanAccel.z;
+
+      if (maxMagnitudeSquared < magnitudeSquared) {
+        maxMagnitudeSquared = magnitudeSquared;
+      }
+    }
+    maxGForce = sqrt(maxMagnitudeSquared) / 9.80665;
+  }
+
+  if (intenseMidpoint != null) {
+    double firstSplitSum = 0;
+    double lastSplitSum = 0;
+    double firstSplitSize = 0;
+    double lastSplitSize = 0;
+    for (final (int index, SessionSample(:data, :classification))
+        in log.indexed) {
+      final AggregateSensorData(:cleanAccel) = data;
+
+      if (classification == Classification.intense) {
+        final double magnitude = sqrt(
+          cleanAccel.x * cleanAccel.x +
+              cleanAccel.y * cleanAccel.y +
+              cleanAccel.z * cleanAccel.z,
+        );
+
+        if (index < intenseMidpoint) {
+          firstSplitSum += magnitude;
+          firstSplitSize += 1;
+        } else {
+          lastSplitSum += magnitude;
+          lastSplitSize += 1;
+        }
+      }
+    }
+    final double firstSplitMean = firstSplitSum / firstSplitSize;
+    final double lastSplitMean = lastSplitSum / lastSplitSize;
+
+    fatigueIndex = max(0, (firstSplitMean - lastSplitMean) / firstSplitMean);
+  }
+
+  return (
+    sessionDuration: sessionDuration,
+    intenseDuration: intenseDuration,
+    maxGForce: maxGForce,
+    fatigueIndex: fatigueIndex,
+  );
 }

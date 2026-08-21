@@ -5,12 +5,21 @@ import '../sensor_capture/aggregate_sensor_data.dart';
 import 'classifier_service.dart';
 import 'session_sample.dart';
 
-typedef Analysis = ({
-  double? sessionDuration,
-  double? intenseDuration,
-  double? maxGForce,
-  double? fatigueIndex,
-});
+class Analysis {
+  final double? sessionDuration;
+  final double? intenseDuration;
+  final double? maxGForce;
+  final double? fatigueIndex;
+  final double? maxGpsSpeed;
+
+  Analysis({
+    this.sessionDuration,
+    this.intenseDuration,
+    this.maxGForce,
+    this.fatigueIndex,
+    this.maxGpsSpeed,
+  });
+}
 
 class AnalyzerService {
   Future<Analysis> analyze(List<SessionSample> log) async {
@@ -23,6 +32,7 @@ Analysis _analyzeWorker(List<SessionSample> log) {
   double? intenseDuration;
   double? maxGForce;
   double? fatigueIndex;
+  double? maxGpsSpeed;
 
   if (log.isNotEmpty) {
     sessionDuration = log.length * 0.02;
@@ -95,10 +105,25 @@ Analysis _analyzeWorker(List<SessionSample> log) {
     fatigueIndex = max(0, (firstSplitMean - lastSplitMean) / firstSplitMean);
   }
 
-  return (
+  if (log.isNotEmpty) {
+    maxGpsSpeed = 0;
+    for (final SessionSample(:data) in log) {
+      final AggregateSensorData(:gps) = data;
+
+      if (gps.accuracy <= 2.5 && maxGpsSpeed! < gps.speed) {
+        maxGpsSpeed = gps.speed;
+      }
+    }
+    if (maxGpsSpeed! < 4) {
+      maxGpsSpeed = null;
+    }
+  }
+
+  return Analysis(
     sessionDuration: sessionDuration,
     intenseDuration: intenseDuration,
     maxGForce: maxGForce,
     fatigueIndex: fatigueIndex,
+    maxGpsSpeed: maxGpsSpeed,
   );
 }

@@ -6,7 +6,6 @@ import '../../core/analysis/session_sample.dart';
 import '../../core/analysis/classifier_service.dart';
 import '../../core/analysis/analyzer_service.dart';
 
-
 enum ActiveSessionError {
   inactiveService,
   activeService,
@@ -37,12 +36,7 @@ class ActiveSessionRepository {
   final List<AggregateSensorData> _stagingBuffer = [];
   final List<SessionSample> _sessionLog = [];
 
-  Analysis _analysis = (
-    sessionDuration: null,
-    intenseDuration: null,
-    maxGForce: null,
-    fatigueIndex: null,
-  );
+  Analysis _analysis = Analysis();
 
   StreamSubscription<AggregateSensorData>? _sensorSubscription;
   StreamSubscription<SensorStatus>? _statusSubscription;
@@ -51,7 +45,7 @@ class ActiveSessionRepository {
   ActiveSessionRepository({
     required this._sensorService,
     required this._classifierService,
-    required this._analyzerService
+    required this._analyzerService,
   });
 
   List<SessionSample> get sessionLog => List.unmodifiable(_sessionLog);
@@ -125,7 +119,9 @@ class ActiveSessionRepository {
           onError: (error) => switch (error) {
             GpsDeniedException() => onError(ActiveSessionError.gpsDenied),
             GpsDisabledException() => onError(ActiveSessionError.gpsDisabled),
-            GpsPermaDeniedException() => onError(ActiveSessionError.gpsPermaDenied),
+            GpsPermaDeniedException() => onError(
+              ActiveSessionError.gpsPermaDenied,
+            ),
             PreciseGpsDeniedException() => onError(
               ActiveSessionError.preciseGpsDenied,
             ),
@@ -137,7 +133,8 @@ class ActiveSessionRepository {
         .listen((classification) {
           _sessionLog.addAll(
             _stagingBuffer.map(
-              (data) => SessionSample(data: data, classification: classification),
+              (data) =>
+                  SessionSample(data: data, classification: classification),
             ),
           );
           _stagingBuffer.clear();
@@ -169,12 +166,7 @@ class ActiveSessionRepository {
     _stagingBuffer.clear();
     await _classifierSubscription?.cancel();
     await _sensorSubscription?.cancel();
-    _analysis = (
-      sessionDuration: null,
-      intenseDuration: null,
-      maxGForce: null,
-      fatigueIndex: null,
-    );
+    _analysis = Analysis();
     _statusController.add(ActiveSessionStatus.idle);
   }
 

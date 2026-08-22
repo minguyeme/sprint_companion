@@ -123,6 +123,7 @@ class ActiveSessionRepository {
 
     _sensorSubscription = _sensorService.sensorStream
         .sampleTime(const Duration(milliseconds: 20))
+        .where((_) => _statusController.value == ActiveSessionStatus.capturing)
         .listen(
           (data) => _stagingBuffer.add(data),
           onError: (error) => switch (error) {

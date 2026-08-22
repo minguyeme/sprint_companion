@@ -56,6 +56,7 @@ class ActiveSessionRepository {
     required this._fileService,
   });
 
+  Stream<ActiveSessionStatus> get statusStream => _statusController.stream;
   List<SessionSample> get sessionLog => List.unmodifiable(_sessionLog);
   Analysis get analysis => _analysis;
 

@@ -6,4 +6,9 @@ class SessionSample {
   final Classification classification;
 
   SessionSample({required this.data, required this.classification});
+
+  Map<String, dynamic> toJson() => {
+    'data': data.toJson(),
+    'classification': classification.toJson(),
+  };
 }

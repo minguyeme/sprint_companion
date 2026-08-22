@@ -13,7 +13,9 @@ extension TimestampedVector3DExtension on TimestampedVector3D {
       (magnitude: sqrt(x * x + y * y + z * z), timestamp: timestamp);
 }
 
-enum Classification { intense, mild }
+enum Classification { intense, mild;
+  String toJson() => name;
+ }
 
 class ClassifierService {
   final _classificationController = PublishSubject<Classification>();

@@ -15,7 +15,7 @@ class UnknownStorageException extends FileException {}
 
 enum FileType {
   dataset('datasets', 'csv', false),
-  metric('metrics', 'csv', true);
+  result('metrics', 'json', true);
 
   final String parentPath;
   final String suffix;

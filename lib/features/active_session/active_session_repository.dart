@@ -1,20 +1,26 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:rxdart/rxdart.dart';
 import '../../core/sensor_capture/aggregate_sensor_data.dart';
 import '../../core/sensor_capture/sensor_service.dart';
 import '../../core/analysis/session_sample.dart';
 import '../../core/analysis/classifier_service.dart';
 import '../../core/analysis/analyzer_service.dart';
+import '../../core/file_storage/file_service.dart';
 
 enum ActiveSessionError {
   inactiveService,
   activeService,
   activeCapture,
+  noCapture,
+  noResult,
   gpsDisabled,
   gpsDenied,
   gpsPermaDenied,
   preciseGpsDenied,
   sensorUnknown,
+  outOfStorage,
+  fileUnknown,
 }
 
 enum ActiveSessionStatus {
@@ -30,6 +36,7 @@ class ActiveSessionRepository {
   final SensorService _sensorService;
   final ClassifierService _classifierService;
   final AnalyzerService _analyzerService;
+  final FileService _fileService;
   final _statusController = BehaviorSubject<ActiveSessionStatus>.seeded(
     ActiveSessionStatus.inactive,
   );
@@ -46,6 +53,7 @@ class ActiveSessionRepository {
     required this._sensorService,
     required this._classifierService,
     required this._analyzerService,
+    required this._fileService,
   });
 
   List<SessionSample> get sessionLog => List.unmodifiable(_sessionLog);
@@ -103,6 +111,7 @@ class ActiveSessionRepository {
     if (_statusController.value != ActiveSessionStatus.idle) {
       switch (_statusController.value) {
         case ActiveSessionStatus.inactive:
+        case ActiveSessionStatus.initializing:
           onError(ActiveSessionError.inactiveService);
         default:
           onError(ActiveSessionError.activeCapture);
@@ -144,8 +153,15 @@ class ActiveSessionRepository {
   Future<void> stopCapture({
     required void Function(ActiveSessionError) onError,
   }) async {
-    if (_statusController.value != ActiveSessionStatus.capturing) {
-      onError(ActiveSessionError.inactiveService);
+    if (_statusController.value != ActiveSessionStatus.capturing ||
+        _sessionLog.isEmpty) {
+      switch (_statusController.value) {
+        case ActiveSessionStatus.inactive:
+        case ActiveSessionStatus.initializing:
+          onError(ActiveSessionError.inactiveService);
+        default:
+          onError(ActiveSessionError.noCapture);
+      }
       return;
     }
 
@@ -156,7 +172,54 @@ class ActiveSessionRepository {
     await _getAnalysis(_sessionLog);
   }
 
-  Future<void> reset() async {
+  Future<void> save({
+    required void Function(ActiveSessionError) onError,
+  }) async {
+    try {
+      if (_statusController.value != ActiveSessionStatus.analyzed) {
+        switch (_statusController.value) {
+          case ActiveSessionStatus.inactive:
+          case ActiveSessionStatus.initializing:
+            onError(ActiveSessionError.inactiveService);
+          default:
+            onError(ActiveSessionError.noResult);
+        }
+        return;
+      }
+
+      final resolvedName =
+          'log_num_${_sessionLog[0].data.rawAccel.timestamp.toString()}';
+
+      final sessionExport = {
+        'metadata': {
+          'generated_at': DateTime.now().toIso8601String(),
+          'version': _analysis.version,
+        },
+        'analysis': _analysis.toJson(),
+        'session_log': _sessionLog.map((sample) => sample.toJson()).toList(),
+      };
+
+      final exportString = jsonEncode(sessionExport);
+
+      await _fileService.logAppData(
+        exportString,
+        fileName: resolvedName,
+        type: FileType.result,
+      );
+
+      reset();
+    } on FileException catch (exception) {
+      switch (exception) {
+        case OutOfStorageException():
+          onError(ActiveSessionError.outOfStorage);
+        case FileNotFoundException():
+        case UnknownStorageException():
+          onError(ActiveSessionError.fileUnknown);
+      }
+    }
+  }
+
+  void reset() async {
     if (_statusController.value == ActiveSessionStatus.inactive ||
         _statusController.value == ActiveSessionStatus.initializing) {
       return;
@@ -164,8 +227,8 @@ class ActiveSessionRepository {
 
     _sessionLog.clear();
     _stagingBuffer.clear();
-    await _classifierSubscription?.cancel();
-    await _sensorSubscription?.cancel();
+    _classifierSubscription?.cancel();
+    _sensorSubscription?.cancel();
     _analysis = Analysis();
     _statusController.add(ActiveSessionStatus.idle);
   }
@@ -174,7 +237,6 @@ class ActiveSessionRepository {
     await _statusSubscription?.cancel();
     await _sensorSubscription?.cancel();
     await _classifierSubscription?.cancel();
-    await _statusController.close();
     _sensorService.dispose();
     _classifierService.dispose();
   }

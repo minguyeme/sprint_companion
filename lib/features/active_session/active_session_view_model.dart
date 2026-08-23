@@ -34,7 +34,8 @@ class ActiveSessionViewModel extends ChangeNotifier {
       notifyListeners();
     });
   }
-
+  
+  ActiveSessionStatus get status => _status;
   AnalysisUi get analysisUi => (
     version: _analysis.version ?? 'Unknown Version',
     sessionDuration: _analysis.sessionDuration != null
@@ -53,7 +54,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
         ? '${_analysis.maxGpsSpeed!.toStringAsFixed(1)} m/s'
         : 'Unreliable gps data',
   );
-
+  
   void initialize() {
     if (_status == ActiveSessionStatus.inactive) {
       _activeSessionRepository.initialize(onError: _handleActiveError);

@@ -4,33 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../sensor_capture/aggregate_sensor_data.dart';
 import 'classifier_service.dart';
 import 'session_sample.dart';
-
-class Analysis {
-  final String? version;
-  final double? sessionDuration;
-  final double? intenseDuration;
-  final double? maxGForce;
-  final double? fatigueIndex;
-  final double? maxGpsSpeed;
-
-  Analysis({
-    this.version,
-    this.sessionDuration,
-    this.intenseDuration,
-    this.maxGForce,
-    this.fatigueIndex,
-    this.maxGpsSpeed,
-  });
-
-  Map<String, dynamic> toJson() => {
-    'version': version,
-    'session_duration': sessionDuration,
-    'intense_duration': intenseDuration,
-    'max_g_force': maxGForce,
-    'fatigue_index': fatigueIndex,
-    'max_gps_speed': maxGpsSpeed,
-  };
-}
+import 'analysis.dart';
 
 class AnalyzerService {
   Future<Analysis> analyze(List<SessionSample> log) async {

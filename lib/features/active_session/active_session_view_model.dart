@@ -2,6 +2,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import 'active_session_repository.dart';
+import '../../core/analysis/analysis.dart';
+
+typedef AnalysisUi = ({
+  String version,
+  String sessionDuration,
+  String intenseDuration,
+  String maxGForce,
+  String fatigueIndex,
+  String maxGpsSpeed,
+});
 
 class ActiveSessionViewModel extends ChangeNotifier {
   final ActiveSessionRepository _activeSessionRepository;
@@ -10,15 +20,39 @@ class ActiveSessionViewModel extends ChangeNotifier {
   StreamSubscription<ActiveSessionStatus>? _activeStatusSubscription;
 
   ActiveSessionStatus _status = ActiveSessionStatus.inactive;
+  Analysis _analysis = Analysis();
 
   ActiveSessionViewModel({required this._activeSessionRepository}) {
     _activeStatusSubscription = _activeSessionRepository.statusStream.listen((
       status,
     ) {
+      if (status == ActiveSessionStatus.analyzed) {
+        _analysis = _activeSessionRepository.analysis;
+      }
+
       _status = status;
       notifyListeners();
     });
   }
+
+  AnalysisUi get analysisUi => (
+    version: _analysis.version ?? 'Unknown Version',
+    sessionDuration: _analysis.sessionDuration != null
+        ? '${_analysis.sessionDuration!.toStringAsFixed(1)}s'
+        : 'Unable to generate',
+    intenseDuration: _analysis.intenseDuration != null
+        ? '${_analysis.intenseDuration!.toStringAsFixed(1)}s'
+        : 'Unable to generate',
+    maxGForce: _analysis.maxGForce != null
+        ? '${_analysis.maxGForce!.toStringAsFixed(2)} G'
+        : 'Unable to generate',
+    fatigueIndex: _analysis.fatigueIndex != null
+        ? '${(_analysis.fatigueIndex! * 100).toStringAsFixed(0)}%'
+        : 'Unable to generate',
+    maxGpsSpeed: _analysis.maxGpsSpeed != null
+        ? '${_analysis.maxGpsSpeed!.toStringAsFixed(1)} m/s'
+        : 'Unreliable gps data',
+  );
 
   void initialize() {
     if (_status == ActiveSessionStatus.inactive) {

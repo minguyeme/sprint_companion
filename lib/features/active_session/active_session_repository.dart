@@ -6,6 +6,7 @@ import '../../core/sensor_capture/sensor_service.dart';
 import '../../core/analysis/session_sample.dart';
 import '../../core/analysis/classifier_service.dart';
 import '../../core/analysis/analyzer_service.dart';
+import '../../core/analysis/analysis.dart';
 import '../../core/file_storage/file_service.dart';
 
 enum ActiveSessionError {

@@ -1,8 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'features/data_collector/data_collector_repository.dart';
-import 'features/data_collector/data_collector_view/data_collector_view.dart';
-import 'core/file_storage/file_management_repository.dart';
+import 'package:provider/provider.dart';
+import 'features/home/home_view/home_view.dart';
 import 'core/file_storage/file_service.dart';
 import 'core/sensor_capture/sensor_service.dart';
 import 'core/desktop_mock/mock_file_service.dart';
@@ -19,29 +18,20 @@ void main() {
     fileService = MockFileService();
     sensorService = MockSensorService();
   }
-  final fileRepository = FileManagementRepository(fileService: fileService);
-  final collectorRepository = DataCollectorRepository(
-    sensorService: sensorService,
-    fileService: fileService,
-  );
 
   runApp(
-    MyApp(
-      fileRepository: fileRepository,
-      collectorRepository: collectorRepository,
+    MultiProvider(
+      providers: [
+        Provider<FileService>.value(value: fileService),
+        Provider<SensorService>.value(value: sensorService),
+      ],
+      child: MyApp(),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  final FileManagementRepository fileRepository;
-  final DataCollectorRepository collectorRepository;
-
-  MyApp({
-    super.key,
-    required this.fileRepository,
-    required this.collectorRepository,
-  });
+  MyApp({super.key});
 
   final colorScheme = ColorScheme.fromSeed(
     seedColor: Colors.blueAccent,
@@ -52,8 +42,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Sprint Companion',
-      theme: ThemeData(
+      theme: ThemeData(                        
         colorScheme: colorScheme,
+        appBarTheme: AppBarTheme(centerTitle: true),
         cardTheme: CardThemeData(
           color: colorScheme.surfaceContainer,
           shape: const RoundedRectangleBorder(
@@ -77,16 +68,37 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(64),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(23)),
+            ),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            minimumSize: const Size.fromHeight(64),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(23)),
+            ),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
         dialogTheme: DialogThemeData(
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(15)),
           ),
         ),
       ),
-      home: DataCollectorView(
-        fileRepository: fileRepository,
-        collectorRepository: collectorRepository,
-      ),
+      home: const HomeView(),
     );
   }
 }

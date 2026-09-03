@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../data_collector/data_collector_view/data_collector_view.dart';
 
 class HomeView extends StatelessWidget {
   const HomeView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final mediaQuery = MediaQuery.of(context);
 
     return Scaffold(
@@ -36,7 +36,13 @@ class HomeView extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: TextButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const DataCollectorView(),
+                      ),
+                    );
+                  },
                   label: const Text('Data Collector'),
                   icon: Icon(Icons.dataset_outlined),
                 ),

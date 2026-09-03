@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../core/file_storage/file_service.dart';
 import '../../../core/file_storage/file_management_repository.dart';
+import '../../../core/sensor_capture/sensor_service.dart';
 import '../data_collector_view_model.dart';
 import '../data_collector_repository.dart';
 import 'widgets/primary_action_button.dart';
@@ -7,110 +10,88 @@ import 'widgets/cache_info.dart';
 import 'widgets/expanded_datasets_list.dart';
 import 'widgets/status_message_card.dart';
 
-class DataCollectorView extends StatefulWidget {
-  final FileManagementRepository fileRepository;
-  final DataCollectorRepository collectorRepository;
-
-  const DataCollectorView({
-    super.key,
-    required this.fileRepository,
-    required this.collectorRepository,
-  });
+class DataCollectorView extends StatelessWidget {
+  const DataCollectorView({super.key});
 
   @override
-  State<DataCollectorView> createState() => _DataCollectorViewState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider<DataCollectorViewModel>(
+      create: (context) {
+        final fileService = context.read<FileService>();
+        final sensorService = context.read<SensorService>();
+
+        final fileRepository = FileManagementRepository(
+          fileService: fileService,
+        );
+        final collectorRepository = DataCollectorRepository(
+          sensorService: sensorService,
+          fileService: fileService,
+        );
+
+        return DataCollectorViewModel(
+          fileRepository: fileRepository,
+          collectorRepository: collectorRepository,
+        )..initialiseScreen();
+      },
+      child: const _DataCollectorContent(),
+    );
+  }
 }
 
-class _DataCollectorViewState extends State<DataCollectorView> {
-  late final DataCollectorViewModel _viewModel;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _viewModel = DataCollectorViewModel(
-      fileRepository: widget.fileRepository,
-      collectorRepository: widget.collectorRepository,
-    );
-
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _viewModel.initialiseScreen(),
-    );
-  }
-
-  @override
-  void dispose() {
-    _viewModel.dispose();
-    super.dispose();
-  }
+class _DataCollectorContent extends StatelessWidget {
+  const _DataCollectorContent();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final mediaQuery = MediaQuery.of(context);
 
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight),
-        child: ListenableBuilder(
-          listenable: _viewModel,
-          builder: (context, child) {
-            final (
-              statusLabel,
-              bgColor,
-              fgColor,
-            ) = switch (_viewModel.collectorStatus) {
-              CollectorStatus.inactive => (
-                'Uninitialised',
-                theme.colorScheme.surfaceContainer,
-                theme.colorScheme.onSurface,
-              ),
-              CollectorStatus.initialising => (
-                'Initialising',
-                theme.colorScheme.surfaceContainer,
-                theme.colorScheme.onSurface,
-              ),
-              CollectorStatus.idle => (
-                'Idle',
-                theme.colorScheme.primaryContainer,
-                theme.colorScheme.onPrimaryContainer,
-              ),
-              CollectorStatus.recording => (
-                'Recording',
-                theme.colorScheme.tertiaryContainer,
-                theme.colorScheme.onTertiaryContainer,
-              ),
-              CollectorStatus.cached => (
-                'Cached',
-                theme.colorScheme.secondaryContainer,
-                theme.colorScheme.onSecondaryContainer,
-              ),
-              CollectorStatus.processing => (
-                'Processing',
-                theme.colorScheme.secondaryContainer,
-                theme.colorScheme.onSecondaryContainer,
-              ),
-            };
+    final viewModel = context.watch<DataCollectorViewModel>();
 
-            return AppBar(
-              title: Text('Data Collector: $statusLabel'),
-              backgroundColor: bgColor,
-              foregroundColor: fgColor,
-            );
-          },
-        ),
+    final (bgColor, fgColor) = switch (viewModel.collectorStatus) {
+      CollectorStatus.inactive => (
+        theme.colorScheme.surfaceContainer,
+        theme.colorScheme.onSurface,
+      ),
+      CollectorStatus.initialising => (
+        theme.colorScheme.surfaceContainer,
+        theme.colorScheme.onSurface,
+      ),
+      CollectorStatus.idle => (
+        theme.colorScheme.primaryContainer,
+        theme.colorScheme.onPrimaryContainer,
+      ),
+      CollectorStatus.recording => (
+        theme.colorScheme.tertiaryContainer,
+        theme.colorScheme.onTertiaryContainer,
+      ),
+      CollectorStatus.cached => (
+        theme.colorScheme.secondaryContainer,
+        theme.colorScheme.onSecondaryContainer,
+      ),
+      CollectorStatus.processing => (
+        theme.colorScheme.secondaryContainer,
+        theme.colorScheme.onSecondaryContainer,
+      ),
+    };
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Data Collector'),
+        backgroundColor: bgColor,
+        foregroundColor: fgColor,
       ),
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(
-            vertical: mediaQuery.size.width * 0.04,
-            horizontal: mediaQuery.size.height * 0.02,
+            vertical: mediaQuery.size.height * 0.04,
+            horizontal: mediaQuery.size.width * 0.06,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextField(
-                controller: _viewModel.nameController,
+                controller: viewModel.nameController,
                 decoration: InputDecoration(
                   labelText: 'Trial Identification',
                   hintText: 'walk_sprint_walk',
@@ -122,13 +103,13 @@ class _DataCollectorViewState extends State<DataCollectorView> {
                 ),
               ),
               const SizedBox(height: 16),
-              StatusMessageCard(viewModel: _viewModel),
+              StatusMessageCard(viewModel: viewModel),
               const SizedBox(height: 16),
-              PrimaryActionButton(viewModel: _viewModel),
+              PrimaryActionButton(viewModel: viewModel),
               const SizedBox(height: 12),
-              CacheInfo(viewModel: _viewModel),
+              CacheInfo(viewModel: viewModel),
               const SizedBox(height: 16),
-              ExpandedDatasetsList(viewModel: _viewModel),
+              ExpandedDatasetsList(viewModel: viewModel),
             ],
           ),
         ),

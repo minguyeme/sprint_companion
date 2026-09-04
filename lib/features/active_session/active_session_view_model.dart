@@ -105,6 +105,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
   void dispose() {
     _activeStatusSubscription?.cancel();
     _eventController.close();
+    _activeSessionRepository.dispose();
     super.dispose();
   }
 }

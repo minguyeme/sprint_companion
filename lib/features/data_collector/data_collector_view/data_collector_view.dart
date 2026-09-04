@@ -14,28 +14,27 @@ class DataCollectorView extends StatelessWidget {
   const DataCollectorView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider<DataCollectorViewModel>(
-      create: (context) {
-        final fileService = context.read<FileService>();
-        final sensorService = context.read<SensorService>();
+  Widget build(BuildContext context) =>
+      ChangeNotifierProvider<DataCollectorViewModel>(
+        create: (context) {
+          final fileService = context.read<FileService>();
+          final sensorService = context.read<SensorService>();
 
-        final fileRepository = FileManagementRepository(
-          fileService: fileService,
-        );
-        final collectorRepository = DataCollectorRepository(
-          sensorService: sensorService,
-          fileService: fileService,
-        );
+          final fileRepository = FileManagementRepository(
+            fileService: fileService,
+          );
+          final collectorRepository = DataCollectorRepository(
+            sensorService: sensorService,
+            fileService: fileService,
+          );
 
-        return DataCollectorViewModel(
-          fileRepository: fileRepository,
-          collectorRepository: collectorRepository,
-        )..initialiseScreen();
-      },
-      child: const _DataCollectorContent(),
-    );
-  }
+          return DataCollectorViewModel(
+            fileRepository: fileRepository,
+            collectorRepository: collectorRepository,
+          )..initialiseScreen();
+        },
+        child: const _DataCollectorContent(),
+      );
 }
 
 class _DataCollectorContent extends StatelessWidget {

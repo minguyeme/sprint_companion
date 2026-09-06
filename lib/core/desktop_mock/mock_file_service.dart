@@ -11,14 +11,19 @@ class MockFileService implements FileService {
   Stream<FileType> get fileChangedStream => _fileChangedController.stream;
 
   @override
-  Future<List<ManagedFileData>> getUserDataFiles({required FileType type}) async {
+  Future<List<ManagedFileData>> getUserDataFiles({
+    required FileType type,
+  }) async {
     await Future.delayed(const Duration(seconds: 2));
     return _mockList;
   }
 
   @override
-  Future<List<ManagedFileData>> getAppDataFiles({required FileType type}) {
-    throw UnimplementedError();
+  Future<List<ManagedFileData>> getAppDataFiles({
+    required FileType type,
+  }) async {
+    await Future.delayed(const Duration(seconds: 2));
+    return _mockList;
   }
 
   @override
@@ -29,7 +34,7 @@ class MockFileService implements FileService {
   }) async {
     _mockList.add(
       ManagedFileData(
-        path: 'datasets/$fileName.${type.suffix}',
+        path: '${type.parentPath}/$fileName.${type.suffix}',
         name: fileName,
         sizeInBytes: 0,
       ),
@@ -42,8 +47,15 @@ class MockFileService implements FileService {
     String str, {
     required String fileName,
     required FileType type,
-  }) {
-    throw UnimplementedError();
+  }) async {
+    _mockList.add(
+      ManagedFileData(
+        path: '${type.parentPath}/$fileName.${type.suffix}',
+        name: fileName,
+        sizeInBytes: 0,
+      ),
+    );
+    _fileChangedController.add(type);
   }
 
   @override

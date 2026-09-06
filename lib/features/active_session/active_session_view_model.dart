@@ -15,7 +15,7 @@ typedef AnalysisUi = ({
 
 class ActiveSessionViewModel extends ChangeNotifier {
   final ActiveSessionRepository _activeSessionRepository;
-  final _eventController = PublishSubject();
+  final _eventController = PublishSubject<String>();
 
   StreamSubscription<ActiveSessionStatus>? _activeStatusSubscription;
 
@@ -34,7 +34,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
       notifyListeners();
     });
   }
-  
+
   ActiveSessionStatus get status => _status;
   AnalysisUi get analysisUi => (
     version: _analysis.version ?? 'Unknown Version',
@@ -54,7 +54,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
         ? '${_analysis.maxGpsSpeed!.toStringAsFixed(1)} m/s'
         : 'Unreliable gps data',
   );
-  
+
   void initialize() {
     if (_status == ActiveSessionStatus.inactive) {
       _activeSessionRepository.initialize(onError: _handleActiveError);
@@ -71,6 +71,10 @@ class ActiveSessionViewModel extends ChangeNotifier {
         _activeSessionRepository.save(onError: _handleActiveError);
       default:
     }
+  }
+
+  void handleReset() {
+    _activeSessionRepository.reset();
   }
 
   void _handleActiveError(ActiveSessionError error) {

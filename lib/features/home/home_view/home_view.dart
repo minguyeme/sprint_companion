@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sprint_companion/features/active_session/active_session_view/active_session_view.dart';
 import '../../data_collector/data_collector_view/data_collector_view.dart';
 
 class HomeView extends StatelessWidget {
@@ -6,10 +7,15 @@ class HomeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final mediaQuery = MediaQuery.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text('Sprint Companion')),
+      appBar: AppBar(
+        title: Text('Sprint Companion'),
+        backgroundColor: theme.colorScheme.secondaryContainer,
+        foregroundColor: theme.colorScheme.onSecondaryContainer,
+      ),
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(
@@ -21,7 +27,13 @@ class HomeView extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               FilledButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ActiveSessionView(),
+                    ),
+                  );
+                },
                 label: const Text('Start Active Session'),
                 icon: Icon(Icons.run_circle_outlined),
               ),

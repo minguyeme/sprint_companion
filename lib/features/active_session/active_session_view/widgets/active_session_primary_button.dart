@@ -14,7 +14,6 @@ class ActiveSessionPrimaryButton extends StatelessWidget {
     final status = context.select<ActiveSessionViewModel, ActiveSessionStatus>(
       (viewModel) => viewModel.status,
     );
-
     final viewModel = context.read<ActiveSessionViewModel>();
 
     final (
